@@ -1,6 +1,9 @@
 defmodule NineMensMorris.Game do
   use GenServer
 
+  alias NineMensMorris.Board
+  alias NineMensMorris.BoardCoordinates
+
   @type t :: %__MODULE__{
           game_id: term(),
           board: map(),
@@ -23,7 +26,7 @@ defmodule NineMensMorris.Game do
     {:ok,
      %__MODULE__{
        game_id: game_id,
-       board: NineMensMorris.Board.new(),
+       board: Board.new(),
        players: %{},
        current_player: :black,
        phase: :placement,
@@ -38,13 +41,6 @@ defmodule NineMensMorris.Game do
 
   def via_tuple(game_id) do
     {:via, Registry, {NineMensMorris.GameRegistry, game_id}}
-  end
-
-  def start_or_get(game_id) do
-    case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
-      [{pid, _}] -> {:ok, pid}
-      [] -> DynamicSupervisor.start_child(NineMensMorris.GameSupervisor, {__MODULE__, game_id})
-    end
   end
 
   def awaiting_player?(game_id) do
@@ -63,6 +59,17 @@ defmodule NineMensMorris.Game do
     GenServer.call(via_tuple(game_id), :current_player)
   end
 
+  def place_piece(game_id, position, player) do
+    GenServer.call(via_tuple(game_id), {:place_piece, position, player})
+  end
+
+  def start_or_get(game_id) do
+    case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
+      [{pid, _}] -> {:ok, pid}
+      [] -> DynamicSupervisor.start_child(NineMensMorris.GameSupervisor, {__MODULE__, game_id})
+    end
+  end
+
   def handle_call(:current_player, _from, state) do
     {:reply, state.current_player, state}
   end
@@ -70,6 +77,11 @@ defmodule NineMensMorris.Game do
   def handle_call(:awaiting_player?, _from, state) do
     state = process_pending_downs(state)
     {:reply, map_size(state.players) < 2, state}
+  end
+
+  def handle_call(:game_full?, _from, state) do
+    state = process_pending_downs(state)
+    {:reply, map_size(state.players) >= 2, state}
   end
 
   def handle_call({:join, player_pid}, _from, state) do
@@ -92,9 +104,55 @@ defmodule NineMensMorris.Game do
     end
   end
 
-  def handle_call(:game_full?, _from, state) do
-    state = process_pending_downs(state)
-    {:reply, map_size(state.players) > 2, state}
+  def handle_call({:place_piece, position, player}, _from, state) do
+    case Board.place_piece(state.board, position, player) do
+      {:ok, new_board} ->
+        coordinates = BoardCoordinates.get_coordinates(position)
+
+        broadcast(
+          state.game_id,
+          {:piece_placed,
+           %{
+             position: position,
+             player: player,
+             current_player: next_player(player),
+             coordinates: coordinates
+           }}
+        )
+
+        formed_mills =
+          Enum.filter(new_board.mills, fn mill ->
+            Board.is_mill?(new_board, mill) and
+              Enum.all?(mill, fn pos -> new_board.positions[pos] == player end)
+          end)
+
+        new_state = %{
+          state
+          | board: new_board,
+            current_player: next_player(player),
+            phase: update_game_phase(new_board, state.phase)
+        }
+
+        if formed_mills != [] do
+          broadcast(state.game_id, {:mill_formed, player, formed_mills})
+        end
+
+        {:reply, {:ok, new_board}, new_state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  defp next_player(:white), do: :black
+  defp next_player(:black), do: :white
+
+  defp update_game_phase(board, :placement) do
+    if board.pieces.white == 0 and board.pieces.black == 0 do
+      :move
+    else
+      :placement
+    end
   end
 
   defp broadcast(game_id, message) do

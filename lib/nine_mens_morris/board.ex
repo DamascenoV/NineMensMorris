@@ -5,7 +5,7 @@ defmodule NineMensMorris.Board do
 
   def new do
     %__MODULE__{
-      positions: initilize_positions(),
+      positions: initialize_positions(),
       mills: mills_combinations()
     }
   end
@@ -34,14 +34,18 @@ defmodule NineMensMorris.Board do
 
     case board.positions[position] do
       ^opponent ->
-        {:ok, %{board | positions: Map.put(board.positions, position, nil)}}
+        if can_remove_piece?(board, position, opponent) do
+          {:ok, %{board | positions: Map.put(board.positions, position, nil)}}
+        else
+          {:error, "Cannot remove piece in a mill"}
+        end
 
       _ ->
         {:error, "Cannot remove piece"}
     end
   end
 
-  defp initilize_positions do
+  defp initialize_positions do
     %{
       a1: nil,
       d1: nil,
@@ -86,5 +90,22 @@ defmodule NineMensMorris.Board do
       [:f2, :f4, :f6],
       [:g1, :g4, :g7]
     ]
+  end
+
+  defp can_remove_piece?(board, position, player) do
+    !in_any_mill?(board, position, player) || all_opponent_pieces_in_mills?(board, player)
+  end
+
+  defp in_any_mill?(board, position, player) do
+    Enum.any?(board.mills, fn mill ->
+      Enum.member?(mill, position) &&
+        Enum.all?(mill, fn pos -> board.positions[pos] == player end)
+    end)
+  end
+
+  defp all_opponent_pieces_in_mills?(board, player) do
+    board.positions
+    |> Enum.filter(fn {_, piece_owner} -> piece_owner == player end)
+    |> Enum.all?(fn {pos, _} -> in_any_mill?(board, pos, player) end)
   end
 end
