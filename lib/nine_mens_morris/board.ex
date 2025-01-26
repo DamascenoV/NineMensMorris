@@ -1,8 +1,19 @@
 defmodule NineMensMorris.Board do
+  @type player :: :white | :black
+  @type position :: atom()
+  @type t :: %__MODULE__{
+          positions: map(),
+          mills: list(),
+          formed_mills: list(),
+          pieces: map()
+        }
+
   defstruct positions: %{},
             mills: [],
+            formed_mills: [],
             pieces: %{white: 9, black: 9}
 
+  @spec new() :: t()
   def new do
     %__MODULE__{
       positions: initialize_positions(),
@@ -10,6 +21,7 @@ defmodule NineMensMorris.Board do
     }
   end
 
+  @spec place_piece(t(), position(), player()) :: {:ok, t()} | {:error, String.t()}
   def place_piece(board, position, player) do
     if board.pieces[player] > 0 do
       {:ok,
@@ -23,12 +35,14 @@ defmodule NineMensMorris.Board do
     end
   end
 
+  @spec is_mill?(t(), [position()]) :: boolean()
   def is_mill?(board, mill_combination) do
     Enum.all?(mill_combination, fn position ->
       board.positions[position] != nil
     end)
   end
 
+  @spec remove_piece(t(), position(), player()) :: {:ok, t()} | {:error, String.t()}
   def remove_piece(board, position, player) do
     opponent = if player == :white, do: :black, else: :white
 
@@ -45,6 +59,7 @@ defmodule NineMensMorris.Board do
     end
   end
 
+  @spec initialize_positions() :: map()
   defp initialize_positions do
     %{
       a1: nil,
@@ -69,6 +84,7 @@ defmodule NineMensMorris.Board do
     }
   end
 
+  @spec mills_combinations() :: [[position()]]
   defp mills_combinations do
     [
       # Horizontal
@@ -92,10 +108,12 @@ defmodule NineMensMorris.Board do
     ]
   end
 
+  @spec can_remove_piece?(t(), position(), player()) :: boolean()
   defp can_remove_piece?(board, position, player) do
     !in_any_mill?(board, position, player) || all_opponent_pieces_in_mills?(board, player)
   end
 
+  @spec in_any_mill?(t(), position(), player()) :: boolean()
   defp in_any_mill?(board, position, player) do
     Enum.any?(board.mills, fn mill ->
       Enum.member?(mill, position) &&
@@ -103,6 +121,7 @@ defmodule NineMensMorris.Board do
     end)
   end
 
+  @spec all_opponent_pieces_in_mills?(t(), player()) :: boolean()
   defp all_opponent_pieces_in_mills?(board, player) do
     board.positions
     |> Enum.filter(fn {_, piece_owner} -> piece_owner == player end)

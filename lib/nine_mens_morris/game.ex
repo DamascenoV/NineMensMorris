@@ -63,6 +63,10 @@ defmodule NineMensMorris.Game do
     GenServer.call(via_tuple(game_id), {:place_piece, position, player})
   end
 
+  def remove_piece(game_id, position, player) do
+    GenServer.call(via_tuple(game_id), {:remove_piece, position, player})
+  end
+
   def start_or_get(game_id) do
     case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
       [{pid, _}] -> {:ok, pid}
@@ -141,6 +145,44 @@ defmodule NineMensMorris.Game do
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:remove_piece, position, player}, _from, state) do
+    opponent = next_player(player)
+
+    case state.board.positions[position] do
+      ^opponent ->
+        case Board.remove_piece(state.board, position, player) do
+          {:ok, new_board} ->
+            coordinates = BoardCoordinates.get_coordinates(position)
+
+            broadcast(
+              state.game_id,
+              {:piece_removed,
+               %{
+                 position: position,
+                 player: player,
+                 current_player: next_player(player),
+                 coordinates: coordinates
+               }}
+            )
+
+            new_state = %{
+              state
+              | board: new_board,
+                current_player: next_player(player),
+                captures: Map.update!(state.captures, player, &(&1 + 1))
+            }
+
+            {:reply, {:ok, new_board}, new_state}
+
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
+
+      _ ->
+        {:reply, {:error, :invalid_piece_removal}, state}
     end
   end
 

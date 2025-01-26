@@ -1,7 +1,6 @@
 defmodule NineMensMorrisWeb.GameLive do
   use NineMensMorrisWeb, :live_view
   alias NineMensMorris.Game
-  alias NineMensMorris.Board
   alias NineMensMorris.BoardCoordinates
 
   @board_coordinates [
@@ -76,71 +75,6 @@ defmodule NineMensMorrisWeb.GameLive do
   end
 
   @impl true
-  def render(assigns) do
-    ~H"""
-    <%= if @game_full do %>
-      <p class="text-red-500 text-2xl mb-4">Game is full. Please try again later.</p>
-    <% else %>
-      <%= if @awaiting_player do %>
-        <p class="text-blue-500 text-2xl mb-4">
-          You are player {@player}. Waiting for another player to join...
-        </p>
-      <% else %>
-        <%= if @can_capture do %>
-          <p class="text-red-500 text-2xl mb-4">
-            Mill formed! Select an opponent's piece to remove.
-          </p>
-        <% else %>
-          <%= if @current_player == @player do %>
-            Your turn ({@player})
-          <% else %>
-            Waiting for opponent's turn...
-          <% end %>
-        <% end %>
-        <div class="game-container bg-gray-200">
-          <svg viewBox="0 0 300 300" width="100%" height="100%">
-            <rect x="50" y="50" width="200" height="200" fill="none" stroke="black" stroke-width="2" />
-            <rect x="87" y="87" width="125" height="125" fill="none" stroke="black" stroke-width="2" />
-            <rect x="125" y="125" width="50" height="50" fill="none" stroke="black" stroke-width="2" />
-            <line x1="150" y1="50" x2="150" y2="125" stroke="black" stroke-width="2" />
-            <line x1="150" y1="175" x2="150" y2="250" stroke="black" stroke-width="2" />
-            <line x1="50" y1="150" x2="125" y2="150" stroke="black" stroke-width="2" />
-            <line x1="175" y1="150" x2="250" y2="150" stroke="black" stroke-width="2" />
-            <%= for {x, y} <- @board_coordinates do %>
-              <circle
-                cx={x}
-                cy={y}
-                r="5"
-                fill="gray"
-                phx-click={if @can_capture, do: "remove_piece", else: "place_piece"}
-                phx-value-position={BoardCoordinates.get_position(x, y)}
-              />
-            <% end %>
-            <%= for {{x, y}, player} <- @placed_pieces do %>
-              <circle
-                cx={x}
-                cy={y}
-                r="10"
-                fill={player_color(player)}
-                phx-click={
-                  if @can_capture and player != @mill_forming_player, do: "remove_piece", else: nil
-                }
-                phx-value-position={BoardCoordinates.get_position(x, y)}
-              />
-            <% end %>
-          </svg>
-
-          <div class="game-info">
-            <p>Current Player: {@current_player}</p>
-            <p>Pieces Left - White: {@board.pieces.white}, Black: {@board.pieces.black}</p>
-          </div>
-        </div>
-      <% end %>
-    <% end %>
-    """
-  end
-
-  @impl true
   def handle_event("place_piece", %{"position" => position_str}, socket) do
     position = String.to_atom(position_str)
     current_player = socket.assigns.current_player
@@ -174,8 +108,8 @@ defmodule NineMensMorrisWeb.GameLive do
   def handle_event("remove_piece", %{"position" => position_str}, socket) do
     position = String.to_atom(position_str)
 
-    if socket.assigns.can_capture and socket.assigns.current_player == socket.assigns.player do
-      case Board.remove_piece(socket.assigns.board, position, socket.assigns.mill_forming_player) do
+    if socket.assigns.can_capture && socket.assigns.current_player == socket.assigns.player do
+      case Game.remove_piece(socket.assigns.game_id, position, socket.assigns.mill_forming_player) do
         {:ok, new_board} ->
           coordinates = BoardCoordinates.get_coordinates(position)
 
@@ -209,10 +143,15 @@ defmodule NineMensMorrisWeb.GameLive do
 
   @impl true
   def handle_info(
-        {:piece_placed, %{position: position, player: player, current_player: current_player, coordinates: coordinates}},
+        {:piece_placed,
+         %{
+           position: position,
+           player: player,
+           current_player: current_player,
+           coordinates: coordinates
+         }},
         socket
       ) do
-
     socket =
       socket
       |> assign(
@@ -236,10 +175,38 @@ defmodule NineMensMorrisWeb.GameLive do
       |> assign(:can_capture, true)
       |> assign(:mill_forming_player, player)
       |> assign(:formed_mills, mills)
+      |> assign(:current_player, next_player(socket.assigns.current_player))
 
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_info(
+        {:piece_removed,
+         %{
+           position: position,
+           player: _player,
+           current_player: current_player,
+           coordinates: coordinates
+         }},
+        socket
+      ) do
+    socket =
+      socket
+      |> assign(
+        board: %{
+          socket.assigns.board
+          | positions: Map.delete(socket.assigns.board.positions, position)
+        }
+      )
+      |> assign(:current_player, current_player)
+      |> assign(:can_capture, false)
+      |> update(:placed_pieces, fn pieces ->
+        Map.delete(pieces, coordinates)
+      end)
+
+    {:noreply, socket}
+  end
 
   defp player_color(:white), do: "white"
   defp player_color(:black), do: "black"
