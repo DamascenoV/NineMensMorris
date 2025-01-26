@@ -6,21 +6,23 @@ defmodule NineMensMorris.Game do
 
   @type t :: %__MODULE__{
           game_id: term(),
-          board: map(),
+          board: Board.t(),
           players: map(),
           current_player: :black | :white | nil,
           phase: :placement | :move,
           captures: map(),
-          winner: atom() | nil
+          winner: atom() | nil,
+          formed_mills: list()
         }
 
   defstruct game_id: nil,
-            board: %{},
+            board: %Board{},
             players: %{},
             current_player: nil,
             phase: :placement,
             captures: %{black: 0, white: 0},
-            winner: nil
+            winner: nil,
+            formed_mills: []
 
   def init(game_id) do
     {:ok,
@@ -31,7 +33,8 @@ defmodule NineMensMorris.Game do
        current_player: :black,
        phase: :placement,
        captures: %{black: 0, white: 0},
-       winner: nil
+       winner: nil,
+       formed_mills: []
      }}
   end
 
@@ -127,14 +130,16 @@ defmodule NineMensMorris.Game do
         formed_mills =
           Enum.filter(new_board.mills, fn mill ->
             Board.is_mill?(new_board, mill) and
-              Enum.all?(mill, fn pos -> new_board.positions[pos] == player end)
+              Enum.all?(mill, fn pos -> new_board.positions[pos] == player end) and
+              !Enum.member?(state.formed_mills, mill)
           end)
 
         new_state = %{
           state
           | board: new_board,
             current_player: next_player(player),
-            phase: update_game_phase(new_board, state.phase)
+            phase: update_game_phase(new_board, state.phase),
+            formed_mills: state.formed_mills ++ formed_mills
         }
 
         if formed_mills != [] do
@@ -156,6 +161,7 @@ defmodule NineMensMorris.Game do
         case Board.remove_piece(state.board, position, player) do
           {:ok, new_board} ->
             coordinates = BoardCoordinates.get_coordinates(position)
+            captures = Map.update!(state.captures, player, &(&1 + 1))
 
             broadcast(
               state.game_id,
@@ -164,7 +170,8 @@ defmodule NineMensMorris.Game do
                  position: position,
                  player: player,
                  current_player: next_player(player),
-                 coordinates: coordinates
+                 coordinates: coordinates,
+                 captures: captures
                }}
             )
 
@@ -172,7 +179,7 @@ defmodule NineMensMorris.Game do
               state
               | board: new_board,
                 current_player: next_player(player),
-                captures: Map.update!(state.captures, player, &(&1 + 1))
+                captures: captures
             }
 
             {:reply, {:ok, new_board}, new_state}

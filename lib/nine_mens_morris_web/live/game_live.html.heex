@@ -17,6 +17,18 @@
         Waiting for opponent's turn...
       <% end %>
     <% end %>
+    <div class="captures">
+      <div>
+        <%= for _ <- 1..@captures.black, @captures.black > 0 do %>
+          <span class="white"></span>
+        <% end %>
+      </div>
+      <div>
+        <%= for _ <- 1..@captures.white, @captures.white > 0 do %>
+          <span class="black"></span>
+        <% end %>
+      </div>
+    </div>
     <div class="game-container bg-gray-200">
       <svg viewBox="0 0 300 300" width="100%" height="100%">
         <rect x="50" y="50" width="200" height="200" fill="none" stroke="black" stroke-width="2" />

@@ -4,13 +4,11 @@ defmodule NineMensMorris.Board do
   @type t :: %__MODULE__{
           positions: map(),
           mills: list(),
-          formed_mills: list(),
           pieces: map()
         }
 
   defstruct positions: %{},
             mills: [],
-            formed_mills: [],
             pieces: %{white: 9, black: 9}
 
   @spec new() :: t()

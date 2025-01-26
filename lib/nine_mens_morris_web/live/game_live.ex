@@ -48,6 +48,7 @@ defmodule NineMensMorrisWeb.GameLive do
       |> assign(:game_full, false)
       |> assign(:awaiting_player, true)
       |> assign(:can_capture, false)
+      |> assign(:captures, %{black: 0, white: 0})
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(NineMensMorris.PubSub, game)
@@ -78,8 +79,6 @@ defmodule NineMensMorrisWeb.GameLive do
   def handle_event("place_piece", %{"position" => position_str}, socket) do
     position = String.to_atom(position_str)
     current_player = socket.assigns.current_player
-
-    dbg(socket)
 
     if current_player == socket.assigns.player do
       case Game.place_piece(socket.assigns.game_id, position, current_player) do
@@ -187,7 +186,8 @@ defmodule NineMensMorrisWeb.GameLive do
            position: position,
            player: _player,
            current_player: current_player,
-           coordinates: coordinates
+           coordinates: coordinates,
+           captures: captures
          }},
         socket
       ) do
@@ -201,6 +201,7 @@ defmodule NineMensMorrisWeb.GameLive do
       )
       |> assign(:current_player, current_player)
       |> assign(:can_capture, false)
+      |> assign(:captures, captures)
       |> update(:placed_pieces, fn pieces ->
         Map.delete(pieces, coordinates)
       end)
@@ -214,4 +215,3 @@ defmodule NineMensMorrisWeb.GameLive do
   defp next_player(:white), do: :black
   defp next_player(:black), do: :white
 end
-
