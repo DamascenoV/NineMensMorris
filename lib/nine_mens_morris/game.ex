@@ -9,7 +9,7 @@ defmodule NineMensMorris.Game do
           board: Board.t(),
           players: map(),
           current_player: :black | :white | nil,
-          phase: :placement | :move,
+          phase: :placement | :move | :flying,
           captures: map(),
           winner: atom() | nil,
           formed_mills: list()
@@ -25,6 +25,8 @@ defmodule NineMensMorris.Game do
             formed_mills: []
 
   def init(game_id) do
+    set_timeout()
+
     {:ok,
      %__MODULE__{
        game_id: game_id,
@@ -112,6 +114,8 @@ defmodule NineMensMorris.Game do
   end
 
   def handle_call({:place_piece, position, player}, _from, state) do
+    set_timeout()
+
     case Board.place_piece(state.board, position, player) do
       {:ok, new_board} ->
         coordinates = BoardCoordinates.get_coordinates(position)
@@ -193,6 +197,11 @@ defmodule NineMensMorris.Game do
     end
   end
 
+  def handle_info(:timeout, state) do
+    broadcast(state.game_id, {:game_ended, :timeout})
+    {:stop, :normal, state}
+  end
+
   defp next_player(:white), do: :black
   defp next_player(:black), do: :white
 
@@ -206,6 +215,10 @@ defmodule NineMensMorris.Game do
 
   defp broadcast(game_id, message) do
     Phoenix.PubSub.broadcast(NineMensMorris.PubSub, "game:#{game_id}", message)
+  end
+
+  defp set_timeout() do
+    Process.send_after(self(), :timeout, 30 * 60 * 1000)
   end
 
   defp process_pending_downs(state) do
