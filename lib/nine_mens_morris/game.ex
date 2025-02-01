@@ -24,6 +24,7 @@ defmodule NineMensMorris.Game do
             winner: nil,
             formed_mills: []
 
+  @spec init(String.t()) :: {:ok, t()}
   def init(game_id) do
     set_timeout()
 
@@ -66,6 +67,10 @@ defmodule NineMensMorris.Game do
 
   def place_piece(game_id, position, player) do
     GenServer.call(via_tuple(game_id), {:place_piece, position, player})
+  end
+
+  def move_piece(game_id, from_pos, to_pos, player) do
+    GenServer.call(via_tuple(game_id), {:move_piece, from_pos, to_pos, player})
   end
 
   def remove_piece(game_id, position, player) do
@@ -120,6 +125,8 @@ defmodule NineMensMorris.Game do
       {:ok, new_board} ->
         coordinates = BoardCoordinates.get_coordinates(position)
 
+        new_phase = update_game_phase(new_board, player, state.phase)
+
         broadcast(
           state.game_id,
           {:piece_placed,
@@ -127,14 +134,14 @@ defmodule NineMensMorris.Game do
              position: position,
              player: player,
              current_player: next_player(player),
+             phase: new_phase,
              coordinates: coordinates
            }}
         )
 
         formed_mills =
           Enum.filter(new_board.mills, fn mill ->
-            Board.is_mill?(new_board, mill) and
-              Enum.all?(mill, fn pos -> new_board.positions[pos] == player end) and
+            Board.is_mill?(new_board, mill, player) and
               !Enum.member?(state.formed_mills, mill)
           end)
 
@@ -142,15 +149,59 @@ defmodule NineMensMorris.Game do
           state
           | board: new_board,
             current_player: next_player(player),
-            phase: update_game_phase(new_board, state.phase),
+            phase: new_phase,
             formed_mills: state.formed_mills ++ formed_mills
         }
+
+        dbg(new_state)
 
         if formed_mills != [] do
           broadcast(state.game_id, {:mill_formed, player, formed_mills})
         end
 
         {:reply, {:ok, new_board}, new_state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:move_piece, from_pos, to_pos, player}, _from, state) do
+    set_timeout()
+
+    case validate_move(state, from_pos, to_pos, player) do
+      :ok ->
+        case Board.move_piece(state.board, from_pos, to_pos, player, state.phase) do
+          {:ok, new_board} ->
+            formed_mills = check_new_mills(new_board, player, state.formed_mills)
+            new_state = update_state_after_move(state, new_board, formed_mills, player)
+
+            coordinates_from = BoardCoordinates.get_coordinates(from_pos)
+            coordinates_to = BoardCoordinates.get_coordinates(to_pos)
+
+            broadcast(
+              state.game_id,
+              {:piece_moved,
+               %{
+                 from: from_pos,
+                 to: to_pos,
+                 player: player,
+                 coordinates_from: coordinates_from,
+                 coordinates_to: coordinates_to,
+                 phase: new_state.phase,
+                 current_player: new_state.current_player
+               }}
+            )
+
+            if formed_mills != [] do
+              broadcast(state.game_id, {:mill_formed, player, formed_mills})
+            end
+
+            {:reply, {:ok, new_board}, new_state}
+
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -186,6 +237,12 @@ defmodule NineMensMorris.Game do
                 captures: captures
             }
 
+            opponent_pieces = Board.count_pieces(new_board, opponent)
+
+            if opponent_pieces < 3 do
+              %{new_state | winner: player}
+            end
+
             {:reply, {:ok, new_board}, new_state}
 
           {:error, reason} ->
@@ -202,14 +259,25 @@ defmodule NineMensMorris.Game do
     {:stop, :normal, state}
   end
 
+  def handle_info({:DOWN, _ref, :process, player_pid, _reason}, state) do
+    new_players = Map.delete(state.players, player_pid)
+    broadcast(state.game_id, {:player_left, player_pid})
+    {:noreply, %{state | players: new_players}}
+  end
+
   defp next_player(:white), do: :black
   defp next_player(:black), do: :white
 
-  defp update_game_phase(board, :placement) do
-    if board.pieces.white == 0 and board.pieces.black == 0 do
-      :move
-    else
-      :placement
+  defp update_game_phase(board, player, current_phase) do
+    cond do
+      current_phase == :placement && board.pieces.white == 0 && board.pieces.black == 0 ->
+        :move
+
+      current_phase == :move && Board.count_pieces(board, player) <= 3 ->
+        :flying
+
+      true ->
+        current_phase
     end
   end
 
@@ -229,6 +297,51 @@ defmodule NineMensMorris.Game do
         process_pending_downs(%{state | players: new_players})
     after
       0 -> state
+    end
+  end
+
+  defp validate_move(state, from_pos, to_pos, player) do
+    cond do
+      state.winner != nil ->
+        {:error, :game_ended}
+
+      state.current_player != player ->
+        {:error, :not_your_turn}
+
+      state.board.positions[from_pos] != player ->
+        {:error, :invalid_piece}
+
+      state.board.positions[to_pos] != nil ->
+        {:error, :position_occupied}
+
+      state.phase == :move && !BoardCoordinates.adjacent_positions?(from_pos, to_pos) ->
+        {:error, :non_adjacent_move}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp check_new_mills(board, player, existing_mills) do
+    Enum.filter(board.mills, fn mill ->
+      Board.is_mill?(board, mill, player) && !Enum.member?(existing_mills, mill)
+    end)
+  end
+
+  defp update_state_after_move(state, new_board, formed_mills, player) do
+    new_state = %{
+      state
+      | board: new_board,
+        current_player: next_player(player),
+        phase: update_game_phase(new_board, player, state.phase),
+        formed_mills: state.formed_mills ++ formed_mills
+    }
+
+    if formed_mills != [] do
+      broadcast(state.game_id, {:mill_formed, player, formed_mills})
+      %{new_state | pending_removals: length(formed_mills)}
+    else
+      new_state
     end
   end
 end

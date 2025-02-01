@@ -49,6 +49,8 @@ defmodule NineMensMorrisWeb.GameLive do
       |> assign(:awaiting_player, true)
       |> assign(:can_capture, false)
       |> assign(:captures, %{black: 0, white: 0})
+      |> assign(:selected_piece, nil)
+      |> assign(:phase, :placement)
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(NineMensMorris.PubSub, game)
@@ -131,6 +133,49 @@ defmodule NineMensMorrisWeb.GameLive do
   end
 
   @impl true
+  def handle_event("select_piece", %{"position" => position_str}, socket) do
+    if socket.assigns.current_player == socket.assigns.player &&
+         socket.assigns.board.positions[String.to_atom(position_str)] == socket.assigns.player do
+      {:noreply, socket |> assign(:selected_piece, String.to_atom(position_str))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("move_piece", %{"position" => to_pos_str}, socket) do
+    to_pos = String.to_atom(to_pos_str)
+    from_pos = socket.assigns.selected_piece
+    current_player = socket.assigns.current_player
+
+    if from_pos && current_player == socket.assigns.player do
+      case Game.move_piece(socket.assigns.game_id, from_pos, to_pos, current_player) do
+        {:ok, new_board} ->
+          coordinates_from = BoardCoordinates.get_coordinates(from_pos)
+          coordinates_to = BoardCoordinates.get_coordinates(to_pos)
+
+          socket =
+            socket
+            |> assign(board: new_board)
+            |> assign(current_player: next_player(current_player))
+            |> update(:placed_pieces, fn pieces ->
+              pieces
+              |> Map.delete(coordinates_from)
+              |> Map.put(coordinates_to, current_player)
+            end)
+            |> assign(:selected_piece, nil)
+
+          {:noreply, socket}
+
+        {:error, _} ->
+          {:noreply, socket |> assign(:selected_piece, nil)}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_info({:player_joined, _player}, socket) do
     socket =
       socket
@@ -147,6 +192,7 @@ defmodule NineMensMorrisWeb.GameLive do
            position: position,
            player: player,
            current_player: current_player,
+           phase: phase,
            coordinates: coordinates
          }},
         socket
@@ -160,9 +206,46 @@ defmodule NineMensMorrisWeb.GameLive do
         }
       )
       |> assign(:current_player, current_player)
+      |> assign(:phase, phase)
       |> update(:placed_pieces, fn pieces ->
         Map.put(pieces, coordinates, player)
       end)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(
+        {:piece_moved,
+         %{
+           from: from_pos,
+           to: to_pos,
+           player: player,
+           coordinates_from: coordinates_from,
+           coordinates_to: coordinates_to,
+           phase: phase
+         }},
+        socket
+      ) do
+    socket =
+      socket
+      |> assign(
+        board: %{
+          socket.assigns.board
+          | positions:
+              socket.assigns.board.positions
+              |> Map.put(from_pos, nil)
+              |> Map.put(to_pos, player)
+        }
+      )
+      |> assign(:current_player, next_player(player))
+      |> assign(:phase, phase)
+      |> update(:placed_pieces, fn pieces ->
+        pieces
+        |> Map.delete(coordinates_from)
+        |> Map.put(coordinates_to, player)
+      end)
+      |> assign(:selected_piece, nil)
 
     {:noreply, socket}
   end

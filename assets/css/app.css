@@ -48,3 +48,55 @@ span.white {
     width: 20px;
     height: 20px;
 }
+
+.selectable {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.selectable:hover {
+    transform: scale(1.1);
+}
+
+.selected {
+    stroke: gold;
+    stroke-width: 2px;
+}
+
+.adjacent {
+    fill: lightgreen;
+}
+
+.phase-indicator {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.winner-message {
+    font-size: 1.5rem;
+    color: darkgreen;
+    font-weight: bold;
+}
+
+.capture-counter {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.white-piece,
+.black-piece {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+
+.white-piece {
+    background-color: white;
+    border: 1px solid black;
+}
+
+.black-piece {
+    background-color: black;
+}

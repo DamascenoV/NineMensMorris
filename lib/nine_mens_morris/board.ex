@@ -1,4 +1,7 @@
 defmodule NineMensMorris.Board do
+
+  alias NineMensMorris.BoardCoordinates
+
   @type player :: :white | :black
   @type position :: atom()
   @type t :: %__MODULE__{
@@ -33,10 +36,9 @@ defmodule NineMensMorris.Board do
     end
   end
 
-  @spec is_mill?(t(), [position()]) :: boolean()
-  def is_mill?(board, mill_combination) do
+  def is_mill?(board, mill_combination, player) do
     Enum.all?(mill_combination, fn position ->
-      board.positions[position] != nil
+      board.positions[position] == player
     end)
   end
 
@@ -124,5 +126,37 @@ defmodule NineMensMorris.Board do
     board.positions
     |> Enum.filter(fn {_, piece_owner} -> piece_owner == player end)
     |> Enum.all?(fn {pos, _} -> in_any_mill?(board, pos, player) end)
+  end
+
+  @spec count_pieces(t(), player()) :: non_neg_integer()
+  def count_pieces(board, player) do
+    board.positions
+    |> Map.values()
+    |> Enum.count(&(&1 == player))
+  end
+
+  def move_piece(board, from_pos, to_pos, player, phase) do
+    cond do
+      board.positions[from_pos] != player ->
+        {:error, :invalid_piece}
+
+      board.positions[to_pos] != nil ->
+        {:error, :position_occupied}
+
+      phase == :move && !valid_move?(from_pos, to_pos) ->
+        {:error, :invalid_move}
+
+      true ->
+        new_positions =
+          board.positions
+          |> Map.put(from_pos, nil)
+          |> Map.put(to_pos, player)
+
+        {:ok, %__MODULE__{board | positions: new_positions}}
+    end
+  end
+
+  defp valid_move?(from_pos, to_pos) do
+    BoardCoordinates.adjacent_positions?(from_pos, to_pos)
   end
 end

@@ -26,6 +26,33 @@ defmodule NineMensMorris.BoardCoordinates do
     {175, 175} => :e5
   }
 
+  @adjacent_positions %{
+    a1: [:a4, :d1],
+    a4: [:a1, :a7, :b4],
+    a7: [:a4, :d7],
+    b2: [:b4, :d2],
+    b4: [:b2, :b6, :a4, :c4],
+    b6: [:b4, :d6],
+    c3: [:c4, :d3],
+    c4: [:c3, :c5, :b4],
+    c5: [:c4, :d5],
+    d1: [:a1, :d2, :g1],
+    d2: [:d1, :d3, :b2, :f2],
+    d3: [:d2, :c3, :e3],
+    d5: [:d6, :c5, :e5],
+    d6: [:d5, :d7, :b6, :f6],
+    d7: [:d6, :a7, :g7],
+    e3: [:e4, :d3],
+    e4: [:e3, :e5, :f4],
+    e5: [:e4, :d5],
+    f2: [:f4, :d2],
+    f4: [:f2, :f6, :e4, :g4],
+    f6: [:f4, :d6],
+    g1: [:g4, :d1],
+    g4: [:g1, :g7, :f4],
+    g7: [:g4, :d7]
+  }
+
   def get_position(x, y, tolerance \\ 10) do
     Enum.find_value(@board_coordinates, fn {{cx, cy}, pos} ->
       if abs(x - cx) <= tolerance and abs(y - cy) <= tolerance do
@@ -39,4 +66,18 @@ defmodule NineMensMorris.BoardCoordinates do
       if pos == position, do: {x, y}
     end)
   end
+
+  def adjacent_positions?(from, to) do
+    to in @adjacent_positions[from]
+  end
+
+  def get_adjacent_positions(position) do
+    Map.get(@adjacent_positions, position, [])
+  end
+
+  def valid_move?(from_pos, to_pos, :move) do
+    adjacent_positions?(from_pos, to_pos)
+  end
+
+  def valid_move?(_from_pos, _to_pos, :flying), do: true
 end
