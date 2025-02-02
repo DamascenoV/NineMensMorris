@@ -13,6 +13,11 @@ button {
     font-size: 13px;
 }
 
+.game-container {
+    background: url(/images/board-1.jpg);
+    background-size: cover;
+}
+
 .captures span {
     border-radius: 50%;
     border: 1px solid black;

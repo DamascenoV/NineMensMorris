@@ -57,7 +57,7 @@
       </div>
     </div>
 
-    <div class="game-container bg-gray-200">
+    <div class="game-container rounded-xl bg-gray-200 border-4 border-solid border-gray-900">
       <svg viewBox="0 0 300 300" width="100%" height="100%">
         <rect x="50" y="50" width="200" height="200" fill="none" stroke="black" stroke-width="2" />
         <rect x="87" y="87" width="125" height="125" fill="none" stroke="black" stroke-width="2" />
@@ -110,30 +110,30 @@
           />
         <% end %>
       </svg>
+    </div>
 
-      <div class="game-info">
-        <p>
-          Current Phase:
-          <span class="phase-indicator">
-            <%= case @phase do %>
-              <% :placement -> %>
-                Placement
-              <% :move -> %>
-                Move
-              <% :flying -> %>
-                Flying
-            <% end %>
-          </span>
-        </p>
-        <p>Pieces Remaining:</p>
-        <ul>
-          <li>White: {@board.pieces.white}</li>
-          <li>Black: {@board.pieces.black}</li>
-        </ul>
-        <%= if @winner do %>
-          <p class="winner-message">Winner: {@winner}</p>
-        <% end %>
-      </div>
+    <div class="game-info">
+      <p>
+        Current Phase:
+        <span class="phase-indicator">
+          <%= case @phase do %>
+            <% :placement -> %>
+              Placement
+            <% :move -> %>
+              Move
+            <% :flying -> %>
+              Flying
+          <% end %>
+        </span>
+      </p>
+      <p>Pieces Remaining:</p>
+      <ul>
+        <li>White: {@board.pieces.white}</li>
+        <li>Black: {@board.pieces.black}</li>
+      </ul>
+      <%= if @winner do %>
+        <p class="winner-message">Winner: {@winner}</p>
+      <% end %>
     </div>
   <% end %>
 <% end %>
