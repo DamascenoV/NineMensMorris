@@ -174,7 +174,7 @@ defmodule NineMensMorris.Game do
         case Board.move_piece(state.board, from_pos, to_pos, player, state.phase) do
           {:ok, new_board} ->
             formed_mills = check_new_mills(new_board, player, state.formed_mills)
-            new_state = update_state_after_move(state, new_board, formed_mills, player)
+            new_state = update_state_after_move(state, new_board, formed_mills, player, from_pos)
 
             coordinates_from = BoardCoordinates.get_coordinates(from_pos)
             coordinates_to = BoardCoordinates.get_coordinates(to_pos)
@@ -328,13 +328,24 @@ defmodule NineMensMorris.Game do
     end)
   end
 
-  defp update_state_after_move(state, new_board, formed_mills, player) do
+  defp update_state_after_move(state, new_board, formed_mills, player, from_pos) do
+    new_formed_mills =
+      if state.phase == :placement do
+        state.formed_mills ++ formed_mills
+      else
+        pruned =
+          state.formed_mills
+          |> Enum.reject(fn mill -> from_pos in mill end)
+
+        pruned ++ formed_mills
+      end
+
     new_state = %{
       state
       | board: new_board,
         current_player: next_player(player),
         phase: update_game_phase(new_board, player, state.phase),
-        formed_mills: state.formed_mills ++ formed_mills
+        formed_mills: new_formed_mills
     }
 
     if formed_mills != [] do
