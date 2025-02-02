@@ -182,7 +182,7 @@ defmodule NineMensMorrisWeb.GameLive do
       |> assign(:awaiting_player, false)
       |> assign(:current_player, Game.current_player(socket.assigns.game_id))
 
-    {:noreply, socket}
+    {:noreply, socket |> put_flash(:info, "Player Join")}
   end
 
   @impl true
@@ -290,6 +290,11 @@ defmodule NineMensMorrisWeb.GameLive do
       end)
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:player_left, _pid}, socket) do
+    {:noreply, socket |> put_flash(:error, "Opponent Left the Game")}
   end
 
   defp player_color(:white), do: "white"

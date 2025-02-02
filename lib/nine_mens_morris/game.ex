@@ -273,6 +273,9 @@ defmodule NineMensMorris.Game do
       current_phase == :placement && board.pieces.white == 0 && board.pieces.black == 0 ->
         :move
 
+      current_phase == :flying && Board.count_pieces(board, player) > 3 ->
+        :move
+
       current_phase == :move && Board.count_pieces(board, player) <= 3 ->
         :flying
 
