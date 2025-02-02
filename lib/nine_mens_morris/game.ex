@@ -339,9 +339,8 @@ defmodule NineMensMorris.Game do
 
     if formed_mills != [] do
       broadcast(state.game_id, {:mill_formed, player, formed_mills})
-      %{new_state | pending_removals: length(formed_mills)}
-    else
-      new_state
     end
+
+    new_state
   end
 end
