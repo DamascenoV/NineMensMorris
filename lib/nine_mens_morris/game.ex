@@ -317,8 +317,8 @@ defmodule NineMensMorris.Game do
       state.board.positions[to_pos] != nil ->
         {:error, :position_occupied}
 
-      state.phase == :move && !BoardCoordinates.adjacent_positions?(from_pos, to_pos) ->
-        {:error, :non_adjacent_move}
+      not BoardCoordinates.valid_move?(from_pos, to_pos, state.phase) ->
+        {:error, :invalid_move}
 
       true ->
         :ok
@@ -343,11 +343,13 @@ defmodule NineMensMorris.Game do
         pruned ++ formed_mills
       end
 
+    current_player = next_player(player)
+
     new_state = %{
       state
       | board: new_board,
-        current_player: next_player(player),
-        phase: update_game_phase(new_board, player, state.phase),
+        current_player: current_player,
+        phase: update_game_phase(new_board, current_player, state.phase),
         formed_mills: new_formed_mills
     }
 

@@ -78,6 +78,4 @@ defmodule NineMensMorris.BoardCoordinates do
   def valid_move?(from_pos, to_pos, :move) do
     adjacent_positions?(from_pos, to_pos)
   end
-
-  def valid_move?(_from_pos, _to_pos, :flying), do: true
 end

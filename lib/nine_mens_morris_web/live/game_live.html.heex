@@ -75,15 +75,25 @@
             fill="gray"
             phx-click={
               cond do
-                @can_capture -> "remove_piece"
-                @selected_piece && is_nil(@board.positions[position]) -> "move_piece"
-                true -> "place_piece"
+                @can_capture ->
+                  "remove_piece"
+
+                @selected_piece && is_nil(@board.positions[position]) &&
+                    (@phase == :flying or
+                       BoardCoordinates.adjacent_positions?(
+                         @selected_piece,
+                         position
+                       )) ->
+                  "move_piece"
+
+                true ->
+                  "place_piece"
               end
             }
             phx-value-position={position}
             class={
-              "position-dot #{if @selected_piece && BoardCoordinates.adjacent_positions?(@selected_piece, position),
-                do: "adjacent"}"
+              "position-dot #{if @selected_piece && (@phase == :flying or BoardCoordinates.adjacent_positions?(@selected_piece, position)),
+                do: "adjacent", else: ""}"
             }
           />
         <% end %>

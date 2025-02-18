@@ -1,5 +1,4 @@
 defmodule NineMensMorris.Board do
-
   alias NineMensMorris.BoardCoordinates
 
   @type player :: :white | :black
@@ -143,7 +142,7 @@ defmodule NineMensMorris.Board do
       board.positions[to_pos] != nil ->
         {:error, :position_occupied}
 
-      phase == :move && !valid_move?(from_pos, to_pos) ->
+      not BoardCoordinates.valid_move?(from_pos, to_pos, phase) ->
         {:error, :invalid_move}
 
       true ->
@@ -154,9 +153,5 @@ defmodule NineMensMorris.Board do
 
         {:ok, %__MODULE__{board | positions: new_positions}}
     end
-  end
-
-  defp valid_move?(from_pos, to_pos) do
-    BoardCoordinates.adjacent_positions?(from_pos, to_pos)
   end
 end
