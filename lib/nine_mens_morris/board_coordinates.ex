@@ -75,7 +75,7 @@ defmodule NineMensMorris.BoardCoordinates do
     Map.get(@adjacent_positions, position, [])
   end
 
-  def valid_move?(from_pos, to_pos, :move) do
-    adjacent_positions?(from_pos, to_pos)
-  end
+  def valid_move?(_from_pos, _to_pos, :flying), do: true
+  def valid_move?(from_pos, to_pos, :move), do: adjacent_positions?(from_pos, to_pos)
+  def valid_move?(_, _, _), do: false
 end

@@ -59,6 +59,7 @@ defmodule NineMensMorrisWeb.GameLive do
         {:ok, _pid} ->
           case Game.join(game_id, self()) do
             {:ok, player} ->
+              dbg(socket)
               {:ok,
                socket
                |> assign(:player, player)
@@ -295,6 +296,13 @@ defmodule NineMensMorrisWeb.GameLive do
   @impl true
   def handle_info({:player_left, _pid}, socket) do
     {:noreply, socket |> put_flash(:error, "Opponent Left the Game")}
+  end
+
+  @impl true
+  def handle_info({:game_ended, :victory, player, by}, socket) do
+    dbg(player)
+    dbg(by)
+    {:noreply, socket |> assign(:winner, player) |> put_flash(:info, "Game Ended")}
   end
 
   defp player_color(:white), do: "white"
