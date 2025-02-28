@@ -4,42 +4,52 @@ defmodule NineMensMorris.Game do
   alias NineMensMorris.Game.State
   alias NineMensMorris.Game.Actions
 
+  @spec start_link(String.t()) :: {:ok, pid()} | {:error, any()}
   def start_link(game_id) do
     GenServer.start_link(__MODULE__, game_id, name: via_tuple(game_id))
   end
 
+  @spec via_tuple(String.t()) :: {:via, Registry, {atom(), String.t()}}
   def via_tuple(game_id) do
     {:via, Registry, {NineMensMorris.GameRegistry, game_id}}
   end
 
+  @spec awaiting_player?(String.t()) :: boolean()
   def awaiting_player?(game_id) do
     GenServer.call(via_tuple(game_id), :awaiting_player?)
   end
 
+  @spec join(String.t(), pid()) :: {:ok, atom()} | {:error, atom()}
   def join(game_id, player_pid) do
     GenServer.call(via_tuple(game_id), {:join, player_pid})
   end
 
+  @spec game_full?(String.t()) :: boolean()
   def game_full?(game_id) do
     GenServer.call(via_tuple(game_id), :game_full?)
   end
 
+  @spec current_player(String.t()) :: atom()
   def current_player(game_id) do
     GenServer.call(via_tuple(game_id), :current_player)
   end
 
+  @spec place_piece(String.t(), atom(), atom()) :: {:ok, Board.t()} | {:error, atom()}
   def place_piece(game_id, position, player) do
     GenServer.call(via_tuple(game_id), {:place_piece, position, player})
   end
 
+  @spec move_piece(String.t(), atom(), atom(), atom()) :: {:ok, Board.t()} | {:error, atom()}
   def move_piece(game_id, from_pos, to_pos, player) do
     GenServer.call(via_tuple(game_id), {:move_piece, from_pos, to_pos, player})
   end
 
+  @spec remove_piece(String.t(), atom(), atom()) :: {:ok, Board.t()} | {:error, atom()}
   def remove_piece(game_id, position, player) do
     GenServer.call(via_tuple(game_id), {:remove_piece, position, player})
   end
 
+  @spec start_or_get(String.t()) :: {:ok, pid()} | {:error, any()}
   def start_or_get(game_id) do
     case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
       [{pid, _}] -> {:ok, pid}
