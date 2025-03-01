@@ -30,14 +30,14 @@ defmodule NineMensMorris.BoardTest do
     assert result == {:error, "No more pieces available"}
   end
 
-  test "is_mill?/3 correctly identifies mills" do
+  test "mill?/3 correctly identifies mills" do
     board = Board.new()
     {:ok, board} = Board.place_piece(board, :a1, :black)
     {:ok, board} = Board.place_piece(board, :a4, :black)
     {:ok, board} = Board.place_piece(board, :a7, :black)
 
-    assert Board.is_mill?(board, [:a1, :a4, :a7], :black) == true
-    assert Board.is_mill?(board, [:a1, :d1, :g1], :black) == false
+    assert Board.mill?(board, [:a1, :a4, :a7], :black) == true
+    assert Board.mill?(board, [:a1, :d1, :g1], :black) == false
   end
 
   test "remove_piece/3 removes an opponent's piece" do

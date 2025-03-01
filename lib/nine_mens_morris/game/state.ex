@@ -1,4 +1,20 @@
 defmodule NineMensMorris.Game.State do
+  @moduledoc """
+  Manages the state for Nine Men's Morris game instances.
+
+  This module defines the game state structure and provides functions
+  for creating and updating the state based on game actions.
+
+  The state tracks information such as:
+  - The game board and its pieces
+  - Connected players
+  - Current game phase
+  - Mills formed on the board
+  - Captured pieces
+  - Game winner
+  - Timeout information
+  """
+
   alias NineMensMorris.Board
 
   @type t :: %__MODULE__{

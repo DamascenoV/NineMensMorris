@@ -1,4 +1,13 @@
 defmodule NineMensMorris.Game.Actions do
+  @moduledoc """
+  Provides action handlers for the Nine Men's Morris game.
+
+  This module contains functions that process game actions such as placing,
+  moving, and removing pieces. Each function validates the action,
+  updates the game state, and returns the result along with any
+  game state changes.
+  """
+
   alias NineMensMorris.Board
   alias NineMensMorris.BoardCoordinates
   alias NineMensMorris.Game.State

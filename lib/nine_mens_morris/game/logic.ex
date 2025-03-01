@@ -1,4 +1,12 @@
 defmodule NineMensMorris.Game.Logic do
+  @moduledoc """
+  Game logic for the Nine Men's Morris board game.
+
+  This module contains functions that implement the rules of Nine Men's Morris,
+  including phase transitions, mill detection, move validation, and
+  determining if a player can make valid moves.
+  """
+
   alias NineMensMorris.Board
   alias NineMensMorris.BoardCoordinates
   alias NineMensMorris.Game.State
@@ -33,7 +41,7 @@ defmodule NineMensMorris.Game.Logic do
     broken_mills =
       if moved_from_pos != nil do
         Enum.filter(state.formed_mills, fn mill ->
-          moved_from_pos in mill and not Board.is_mill?(new_board, mill, player)
+          moved_from_pos in mill and not Board.mill?(new_board, mill, player)
         end)
       else
         []
@@ -42,7 +50,7 @@ defmodule NineMensMorris.Game.Logic do
     new_mills =
       Enum.filter(new_board.mills, fn mill ->
         moved_to_pos in mill and
-          Board.is_mill?(new_board, mill, player) and
+          Board.mill?(new_board, mill, player) and
           not Enum.member?(state.formed_mills, mill)
       end)
 
@@ -73,7 +81,7 @@ defmodule NineMensMorris.Game.Logic do
       :move ->
         Enum.any?(player_positions, fn pos ->
           adjacent = BoardCoordinates.get_adjacent_positions(pos)
-          Enum.any?(adjacent, fn adj_pos -> Enum.member?(empty_positions, adj_pos) end)
+          Enum.any?(adjacent, &Enum.member?(empty_positions, &1))
         end)
 
       _ ->
