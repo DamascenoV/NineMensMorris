@@ -35,6 +35,7 @@ defmodule NineMensMorris.Board do
     end
   end
 
+  @spec is_mill?(t(), list(t_position()), t_player()) :: boolean()
   def is_mill?(board, mill_combination, player) do
     Enum.all?(mill_combination, fn position ->
       board.positions[position] == player

@@ -53,6 +53,7 @@ defmodule NineMensMorris.BoardCoordinates do
     g7: [:g4, :d7]
   }
 
+  @spec get_position(number(), number(), number()) :: atom() | nil
   def get_position(x, y, tolerance \\ 10) do
     Enum.find_value(@board_coordinates, fn {{cx, cy}, pos} ->
       if abs(x - cx) <= tolerance and abs(y - cy) <= tolerance do
@@ -61,20 +62,24 @@ defmodule NineMensMorris.BoardCoordinates do
     end)
   end
 
+  @spec get_coordinates(atom()) :: {number(), number()} | nil
   def get_coordinates(position) do
     Enum.find_value(@board_coordinates, fn {{x, y}, pos} ->
       if pos == position, do: {x, y}
     end)
   end
 
+  @spec adjacent_positions?(atom(), atom()) :: boolean()
   def adjacent_positions?(from, to) do
     to in @adjacent_positions[from]
   end
 
+  @spec get_adjacent_positions(atom()) :: [atom()]
   def get_adjacent_positions(position) do
     Map.get(@adjacent_positions, position, [])
   end
 
+  @spec valid_move?(atom(), atom(), atom()) :: boolean()
   def valid_move?(_from_pos, _to_pos, :flying), do: true
   def valid_move?(from_pos, to_pos, :move), do: adjacent_positions?(from_pos, to_pos)
   def valid_move?(_, _, _), do: false
