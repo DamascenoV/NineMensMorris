@@ -1,4 +1,17 @@
 defmodule NineMensMorris.BoardCoordinates do
+  @moduledoc """
+  Manages position coordinates and adjacency for the Nine Men's Morris board.
+
+  This module provides mapping between board positions and their coordinates,
+  as well as functions to determine adjacent positions and validate moves.
+
+  It contains:
+  - Coordinate mapping for visual representation
+  - Adjacent position definitions for move validation
+  - Functions to convert between positions and coordinates
+  - Logic for determining valid moves based on game phase
+  """
+
   @board_coordinates %{
     {50, 50} => :a1,
     {150, 50} => :d1,

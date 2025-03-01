@@ -1,4 +1,19 @@
 defmodule NineMensMorris.Board do
+  @moduledoc """
+  Represents the Nine Men's Morris game board.
+
+  This module defines the board structure and provides functions
+  for manipulating the board state, including:
+  - Placing pieces
+  - Moving pieces
+  - Removing pieces
+  - Checking for mills (three pieces in a row)
+  - Counting pieces
+
+  The board consists of 24 positions arranged in three concentric squares
+  with connecting lines, where pieces can be placed at intersections.
+  """
+
   alias NineMensMorris.BoardCoordinates
 
   @type t_player :: :white | :black | nil
@@ -35,8 +50,8 @@ defmodule NineMensMorris.Board do
     end
   end
 
-  @spec is_mill?(t(), list(t_position()), t_player()) :: boolean()
-  def is_mill?(board, mill_combination, player) do
+  @spec mill?(t(), list(t_position()), t_player()) :: boolean()
+  def mill?(board, mill_combination, player) do
     Enum.all?(mill_combination, fn position ->
       board.positions[position] == player
     end)

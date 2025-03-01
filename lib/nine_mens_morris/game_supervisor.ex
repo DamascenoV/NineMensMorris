@@ -1,4 +1,12 @@
 defmodule NineMensMorris.GameSupervisor do
+  @moduledoc """
+  Dynamic supervisor for Nine Men's Morris game processes.
+
+  This module supervises game processes and allows for dynamic creation
+  and termination of games. It uses a one-for-one supervision strategy,
+  meaning each game process is supervised independently.
+  """
+
   use DynamicSupervisor
 
   def start_link(_opts) do

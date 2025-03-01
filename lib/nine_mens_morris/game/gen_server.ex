@@ -1,8 +1,20 @@
 defmodule NineMensMorris.Game do
+  @moduledoc """
+  GenServer implementation for managing Nine Men's Morris game state.
+
+  This module handles the game lifecycle, player management, and
+  action processing. It provides an API for game interactions
+  including starting games, joining games, and executing moves.
+
+  The module broadcasts game events to connected clients and manages
+  timeouts for inactive games.
+  """
+
   use GenServer
 
   alias NineMensMorris.Game.State
   alias NineMensMorris.Game.Actions
+  alias NineMensMorris.Board
 
   @spec start_link(String.t()) :: {:ok, pid()} | {:error, any()}
   def start_link(game_id) do

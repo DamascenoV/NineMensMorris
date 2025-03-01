@@ -1,4 +1,12 @@
 defmodule NineMensMorris.GameRegistry do
+  @moduledoc """
+  Registry for Nine Men's Morris game processes.
+
+  This module provides a registry for tracking active game processes,
+  allowing them to be found by game ID. It is implemented using Elixir's
+  Registry module with unique keys.
+  """
+
   def start_link(_opts) do
     Registry.start_link(keys: :unique, name: __MODULE__, partitions: System.schedulers_online())
   end
