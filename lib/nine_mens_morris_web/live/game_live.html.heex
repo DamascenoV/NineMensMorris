@@ -1,149 +1,277 @@
-<%= if @game_full do %>
-  <p class="text-red-500 text-2xl mb-4">Game is full. Please try again later.</p>
-<% else %>
-  <%= if @awaiting_player do %>
-    <p class="text-blue-500 text-2xl mb-4">
-      You are player {@player}. Waiting for another player to join...
-    </p>
+<div class="game-wrapper">
+  <h1 class="game-title text-3xl font-bold">Nine Men's Morris</h1>
+
+  <%= if @game_full do %>
+    <div class="waiting-screen">
+      <p class="text-red-500 text-2xl mb-4">Game is full. Please try again later.</p>
+      <button class="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+        Try Again
+      </button>
+    </div>
   <% else %>
-    <div class="game-status">
-      <%= if @can_capture do %>
-        <div class="removal-prompt bg-red-100 p-4 rounded-lg mb-4">
-          <p class="text-red-500 text-sm">
-            Select opponent's piece to remove
-          </p>
+    <%= if @awaiting_player do %>
+      <div class="waiting-screen">
+        <p class="text-blue-500 text-2xl mb-2">
+          You are player <span class="font-bold">{@player}</span>
+        </p>
+        <p class="text-gray-700 mb-4">Waiting for another player to join...</p>
+        <div class="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent mx-auto">
         </div>
-      <% else %>
-        <%= if @current_player == @player do %>
-          <p class="text-green-500 text-2xl mb-4">
-            Your turn ({@player}) -
-            <%= case @phase do %>
-              <% :placement -> %>
-                Placement Phase
-              <% :move -> %>
-                Move Phase
-              <% :flying -> %>
-                Flying Phase
-            <% end %>
-          </p>
-          <%= if @selected_piece do %>
-            <p class="text-blue-500 text-lg">
-              Selected piece: {@selected_piece}<br />
-              <%= if @phase == :flying do %>
-                Click any empty position to move
-              <% else %>
-                Click adjacent empty position to move
+      </div>
+    <% else %>
+      <div class="game-layout">
+        <div class="sidebar">
+          <h2 class="sidebar-title">Game Status</h2>
+          <%= cond do %>
+            <% @can_capture -> %>
+              <div class="turn-indicator remove">
+                <p class="text-red-500 font-medium">
+                  Select opponent's piece to remove
+                </p>
+              </div>
+            <% @current_player == @player -> %>
+              <div class="turn-indicator your-turn">
+                <p class="text-green-600 font-medium">
+                  Your turn ({@player})
+                </p>
+                <p class="text-sm text-green-700 mt-1">
+                  <%= case @phase do %>
+                    <% :placement -> %>
+                      Place a piece on the board
+                    <% :move -> %>
+                      Move a piece to an adjacent position
+                    <% :flying -> %>
+                      Move a piece to any empty position
+                  <% end %>
+                </p>
+              </div>
+            <% true -> %>
+              <div class="turn-indicator waiting">
+                <p class="text-yellow-600 font-medium">
+                  Waiting for opponent's turn...
+                </p>
+              </div>
+          <% end %>
+          <%= if @selected_piece && @current_player == @player do %>
+            <div class="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+              <p class="text-blue-700">
+                <span class="font-medium">Selected:</span> {@selected_piece}
+              </p>
+              <p class="text-sm text-blue-600 mt-1">
+                <%= if @phase == :flying do %>
+                  Click any empty position to move
+                <% else %>
+                  Click adjacent empty position to move
+                <% end %>
+              </p>
+            </div>
+          <% end %>
+          <div class="mt-6">
+            <p class="text-gray-700 mb-2">Current Phase:</p>
+            <div class="phase-indicator">
+              <%= case @phase do %>
+                <% :placement -> %>
+                  Placement
+                <% :move -> %>
+                  Movement
+                <% :flying -> %>
+                  Flying
               <% end %>
-            </p>
+            </div>
+          </div>
+          <%= if @winner do %>
+            <div class="mt-4 p-3 bg-green-50 rounded-md border border-green-200">
+              <p class="text-lg font-bold text-green-600 text-center">
+                🏆 {@winner} wins!
+              </p>
+            </div>
           <% end %>
-        <% else %>
-          <p class="text-yellow-500 text-2xl mb-4">
-            Waiting for opponent's turn...
-          </p>
-        <% end %>
-      <% end %>
-    </div>
+        </div>
+        <div class="game-board-container">
+          <div class="game-board">
+            <svg viewBox="0 0 300 300" width="100%" height="100%">
+              <rect
+                x="50"
+                y="50"
+                width="200"
+                height="200"
+                fill="none"
+                stroke="black"
+                stroke-width="2"
+                class="board-lines"
+              />
+              <rect
+                x="87"
+                y="87"
+                width="125"
+                height="125"
+                fill="none"
+                stroke="black"
+                stroke-width="2"
+                class="board-lines"
+              />
+              <rect
+                x="125"
+                y="125"
+                width="50"
+                height="50"
+                fill="none"
+                stroke="black"
+                stroke-width="2"
+                class="board-lines"
+              />
+              <line
+                x1="150"
+                y1="50"
+                x2="150"
+                y2="125"
+                stroke="black"
+                stroke-width="2"
+                class="board-lines"
+              />
+              <line
+                x1="150"
+                y1="175"
+                x2="150"
+                y2="250"
+                stroke="black"
+                stroke-width="2"
+                class="board-lines"
+              />
+              <line
+                x1="50"
+                y1="150"
+                x2="125"
+                y2="150"
+                stroke="black"
+                stroke-width="2"
+                class="board-lines"
+              />
+              <line
+                x1="175"
+                y1="150"
+                x2="250"
+                y2="150"
+                stroke="black"
+                stroke-width="2"
+                class="board-lines"
+              />
+              <%= for {x, y} <- @board_coordinates do %>
+                <% position = BoardCoordinates.get_position(x, y) %>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="5"
+                  phx-click={
+                    cond do
+                      @can_capture ->
+                        "remove_piece"
 
-    <div class="captures">
-      <div class="capture-counter">
-        <%= for _ <- 1..@captures.black, @captures.black > 0 do %>
-          <span class="white-piece"></span>
-        <% end %>
+                      @selected_piece && is_nil(@board.positions[position]) &&
+                          (@phase == :flying or
+                             BoardCoordinates.adjacent_positions?(
+                               @selected_piece,
+                               position
+                             )) ->
+                        "move_piece"
+
+                      true ->
+                        "place_piece"
+                    end
+                  }
+                  phx-value-position={position}
+                  class={"position-dot #{if @selected_piece && (@phase == :flying or BoardCoordinates.adjacent_positions?(@selected_piece, position)) && is_nil(@board.positions[position]), do: "adjacent", else: ""}"}
+                />
+              <% end %>
+              <%= for {{x, y}, player} <- @placed_pieces do %>
+                <% position = BoardCoordinates.get_position(x, y) %>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="12"
+                  fill={player_color(player)}
+                  class={"game-piece #{if @current_player == @player && player == @player && @phase in [:move, :flying], do: "selectable"} #{if position == @selected_piece, do: "selected"}"}
+                  phx-click={
+                    cond do
+                      @can_capture && player != @mill_forming_player -> "remove_piece"
+                      @phase in [:move, :flying] && player == @player -> "select_piece"
+                      true -> nil
+                    end
+                  }
+                  phx-value-position={position}
+                />
+              <% end %>
+            </svg>
+          </div>
+        </div>
+        <div class="sidebar">
+          <div class="info-section">
+            <h3 class="info-title">Pieces Remaining</h3>
+            <div class="space-y-2">
+              <div class="pieces-count">
+                <div class="piece-label">
+                  <span class="piece white-piece"></span>
+                  <span>White</span>
+                </div>
+                <span class="piece-value">{@board.pieces.white}</span>
+              </div>
+              <div class="pieces-count">
+                <div class="piece-label">
+                  <span class="piece black-piece"></span>
+                  <span>Black</span>
+                </div>
+                <span class="piece-value">{@board.pieces.black}</span>
+              </div>
+            </div>
+          </div>
+          <div class="info-section">
+            <h3 class="info-title">Captured Pieces</h3>
+            <div class="space-y-2">
+              <div class="pieces-count">
+                <div class="piece-label">
+                  <span>White captured</span>
+                </div>
+                <div class="flex gap-1">
+                  <%= for _ <- 1..@captures.white, @captures.white > 0 do %>
+                    <span class="piece black-piece"></span>
+                  <% end %>
+                </div>
+              </div>
+              <div class="pieces-count">
+                <div class="piece-label">
+                  <span>Black captured</span>
+                </div>
+                <div class="flex gap-1">
+                  <%= for _ <- 1..@captures.black, @captures.black > 0 do %>
+                    <span class="piece white-piece"></span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="rules-panel">
+            <h3 class="rules-title">Game Rules</h3>
+            <div class="rules-list">
+              <div class="rule-item">
+                <span class="rule-label">Placement:</span>
+                <span>Place pieces on empty positions</span>
+              </div>
+              <div class="rule-item">
+                <span class="rule-label">Movement:</span>
+                <span>Move to adjacent positions</span>
+              </div>
+              <div class="rule-item">
+                <span class="rule-label">Flying:</span>
+                <span>Unlocked when you have 3 pieces left</span>
+              </div>
+              <div class="rule-item">
+                <span class="rule-label">Mills:</span>
+                <span>Form a row of 3 to remove opponent's piece</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="capture-counter">
-        <%= for _ <- 1..@captures.white, @captures.white > 0 do %>
-          <span class="black-piece"></span>
-        <% end %>
-      </div>
-    </div>
-
-    <div class="game-container rounded-xl bg-gray-200 border-4 border-solid border-gray-900">
-      <svg viewBox="0 0 300 300" width="100%" height="100%">
-        <rect x="50" y="50" width="200" height="200" fill="none" stroke="black" stroke-width="2" />
-        <rect x="87" y="87" width="125" height="125" fill="none" stroke="black" stroke-width="2" />
-        <rect x="125" y="125" width="50" height="50" fill="none" stroke="black" stroke-width="2" />
-        <line x1="150" y1="50" x2="150" y2="125" stroke="black" stroke-width="2" />
-        <line x1="150" y1="175" x2="150" y2="250" stroke="black" stroke-width="2" />
-        <line x1="50" y1="150" x2="125" y2="150" stroke="black" stroke-width="2" />
-        <line x1="175" y1="150" x2="250" y2="150" stroke="black" stroke-width="2" />
-        <%= for {x, y} <- @board_coordinates do %>
-          <% position = BoardCoordinates.get_position(x, y) %>
-          <circle
-            cx={x}
-            cy={y}
-            r="5"
-            fill="gray"
-            phx-click={
-              cond do
-                @can_capture ->
-                  "remove_piece"
-
-                @selected_piece && is_nil(@board.positions[position]) &&
-                    (@phase == :flying or
-                       BoardCoordinates.adjacent_positions?(
-                         @selected_piece,
-                         position
-                       )) ->
-                  "move_piece"
-
-                true ->
-                  "place_piece"
-              end
-            }
-            phx-value-position={position}
-            class={
-              "position-dot #{if @selected_piece && (@phase == :flying or BoardCoordinates.adjacent_positions?(@selected_piece, position)),
-                do: "adjacent", else: ""}"
-            }
-          />
-        <% end %>
-
-        <%= for {{x, y}, player} <- @placed_pieces do %>
-          <% position = BoardCoordinates.get_position(x, y) %>
-          <circle
-            cx={x}
-            cy={y}
-            r="10"
-            fill={player_color(player)}
-            class={
-              "game-piece #{if @current_player == @player && player == @player && @phase in [:move, :flying],
-                do: "selectable"} #{if position == @selected_piece, do: "selected"}"
-            }
-            phx-click={
-              cond do
-                @can_capture && player != @mill_forming_player -> "remove_piece"
-                @phase in [:move, :flying] && player == @player -> "select_piece"
-                true -> nil
-              end
-            }
-            phx-value-position={position}
-          />
-        <% end %>
-      </svg>
-    </div>
-
-    <div class="game-info">
-      <p>
-        Current Phase:
-        <span class="phase-indicator">
-          <%= case @phase do %>
-            <% :placement -> %>
-              Placement
-            <% :move -> %>
-              Move
-            <% :flying -> %>
-              Flying
-          <% end %>
-        </span>
-      </p>
-      <p>Pieces Remaining:</p>
-      <ul>
-        <li>White: {@board.pieces.white}</li>
-        <li>Black: {@board.pieces.black}</li>
-      </ul>
-      <%= if @winner do %>
-        <p class="winner-message">Winner: {@winner}</p>
-      <% end %>
-    </div>
+    <% end %>
   <% end %>
-<% end %>
+</div>
