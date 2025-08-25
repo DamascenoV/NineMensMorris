@@ -1,0 +1,263 @@
+<div class="lobby-container">
+  <div class="lobby-header">
+    <h1 class="lobby-title">Nine Men's Morris</h1>
+    <p class="lobby-subtitle">Create a new game or join an existing one</p>
+  </div>
+
+  <%= if @error do %>
+    <div class="error-banner">
+      <div class="error-content">
+        <span class="error-icon">⚠️</span>
+        <span class="error-message">{@error}</span>
+        <button class="error-close" phx-click="clear_error" aria-label="Close error">
+          ✕
+        </button>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="lobby-content">
+    <div class="lobby-section">
+      <div class="section-header">
+        <h2 class="section-title">Join Game</h2>
+        <p class="section-description">Enter a game ID to join an existing game</p>
+      </div>
+
+      <.form
+        for={@join_form}
+        id="join-game-form"
+        phx-submit="join_game"
+        phx-change="validate_join"
+        class="game-form"
+      >
+        <div class="form-group">
+          <.input
+            field={@join_form[:game_id]}
+            type="text"
+            placeholder="Enter game ID"
+            required
+            class="game-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <.input
+            field={@join_form[:password]}
+            type="password"
+            placeholder="Password (if required)"
+            class="game-input"
+          />
+        </div>
+
+        <button type="submit" class="join-button">
+          <span class="button-icon">🎮</span> Join Game
+        </button>
+      </.form>
+    </div>
+    <div class="lobby-section">
+      <div class="section-header">
+        <h2 class="section-title">Create Game</h2>
+        <p class="section-description">
+          Start a new game for others to join
+        </p>
+      </div>
+
+      <.form
+        for={@create_form}
+        id="create-game-form"
+        phx-submit="create_game"
+        phx-change="validate_create"
+        class="game-form"
+      >
+        <div class="form-group">
+          <label class="checkbox-label">
+            <.input field={@create_form[:is_private]} type="checkbox" class="game-checkbox" />
+            <span class="checkbox-text">Private Game</span>
+          </label>
+        </div>
+
+        <div
+          class="form-group"
+          id="password-group"
+          style={if(@create_form[:is_private].value == "true", do: "", else: "display: none;")}
+        >
+          <.input
+            field={@create_form[:password]}
+            type="password"
+            placeholder="Set password"
+            class="game-input"
+          />
+        </div>
+
+        <button type="submit" class="create-button">
+          <span class="button-icon">➕</span> Create Game
+        </button>
+      </.form>
+    </div>
+  </div>
+  <div class="rules-section">
+    <h3 class="rules-title">How to Play</h3>
+    <div class="rules-grid">
+      <div class="rule-card">
+        <div class="rule-icon">🎯</div>
+        <h4>Placement Phase</h4>
+        <p>Place all 9 pieces on the board intersections</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">🚀</div>
+        <h4>Movement Phase</h4>
+        <p>Move pieces to adjacent positions</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">🦅</div>
+        <h4>Flying Phase</h4>
+        <p>Move pieces anywhere when you have 3 pieces left</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">💥</div>
+        <h4>Mills</h4>
+        <p>Form 3-in-a-row to remove opponent's pieces</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .lobby-container {
+    @apply min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4;
+  }
+
+  .lobby-header {
+    @apply text-center mb-8;
+  }
+
+  .lobby-title {
+    @apply text-4xl font-bold text-gray-800 mb-2;
+  }
+
+  .lobby-subtitle {
+    @apply text-lg text-gray-600;
+  }
+
+  .error-banner {
+    @apply mb-6;
+  }
+
+  .error-content {
+    @apply bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between;
+  }
+
+  .error-icon {
+    @apply text-lg mr-2;
+  }
+
+  .error-message {
+    @apply flex-1;
+  }
+
+  .error-close {
+    @apply text-red-700 hover:text-red-900 font-bold text-lg;
+  }
+
+  .lobby-content {
+    @apply max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 mb-12;
+  }
+
+  .lobby-section {
+    @apply bg-white rounded-xl shadow-lg p-6;
+  }
+
+  .section-header {
+    @apply text-center mb-6;
+  }
+
+  .section-title {
+    @apply text-2xl font-semibold text-gray-800 mb-2;
+  }
+
+  .section-description {
+    @apply text-gray-600;
+  }
+
+  .game-form {
+    @apply space-y-4;
+  }
+
+  .form-group {
+    @apply space-y-2;
+  }
+
+  .game-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all;
+  }
+
+  .checkbox-label {
+    @apply flex items-center space-x-3 cursor-pointer;
+  }
+
+  .game-checkbox {
+    @apply w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500;
+  }
+
+  .checkbox-text {
+    @apply text-gray-700 font-medium;
+  }
+
+  .join-button, .create-button {
+    @apply w-full py-3 px-6 rounded-lg font-semibold text-white transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .join-button {
+    @apply bg-green-600 hover:bg-green-700 focus:ring-green-500;
+  }
+
+  .create-button {
+    @apply bg-blue-600 hover:bg-blue-700 focus:ring-blue-500;
+  }
+
+  .button-icon {
+    @apply mr-2;
+  }
+
+  .rules-section {
+    @apply max-w-4xl mx-auto;
+  }
+
+  .rules-title {
+    @apply text-2xl font-semibold text-gray-800 text-center mb-6;
+  }
+
+  .rules-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  .rule-card {
+    @apply bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow;
+  }
+
+  .rule-icon {
+    @apply text-3xl mb-2;
+  }
+
+  .rule-card h4 {
+    @apply font-semibold text-gray-800 mb-2;
+  }
+
+  .rule-card p {
+    @apply text-sm text-gray-600;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Handle private game checkbox toggle
+    const checkbox = document.querySelector('input[name="create_form[is_private]"]');
+    const passwordGroup = document.getElementById('password-group');
+
+    if (checkbox && passwordGroup) {
+      checkbox.addEventListener('change', function() {
+        passwordGroup.style.display = this.checked ? 'block' : 'none';
+      });
+    }
+  });
+</script>

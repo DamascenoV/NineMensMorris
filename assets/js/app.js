@@ -23,9 +23,40 @@ import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+
+let Hooks = {}
+
+Hooks.CursorTracker = {
+  mounted() {
+    this.handleMouseMove = (event) => {
+      const board = event.currentTarget
+      const rect = board.getBoundingClientRect()
+
+      const x = event.clientX - rect.left
+      const y = event.clientY - rect.top
+
+      if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+        const svgX = (x / rect.width) * 300
+        const svgY = (y / rect.height) * 300
+
+        this.pushEvent("cursor_move", {x: svgX, y: svgY})
+      }
+    }
+
+    this.el.addEventListener("mousemove", this.handleMouseMove)
+  },
+
+  destroyed() {
+    if (this.handleMouseMove) {
+      this.el.removeEventListener("mousemove", this.handleMouseMove)
+    }
+  }
+}
+
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken}
+  params: {_csrf_token: csrfToken},
+  hooks: Hooks
 })
 
 // Show progress bar on live navigation and form submits

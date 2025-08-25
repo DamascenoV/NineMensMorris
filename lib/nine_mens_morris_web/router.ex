@@ -18,6 +18,7 @@ defmodule NineMensMorrisWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    live "/lobby", LobbyLive
     live "/game/:game_id", GameLive
   end
 

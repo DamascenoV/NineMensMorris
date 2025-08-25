@@ -12,7 +12,7 @@ defmodule NineMensMorris.Game.StateTest do
     assert state.captures == %{black: 0, white: 0}
     assert state.winner == nil
     assert state.formed_mills == []
-    assert state.timeout_ref != nil
+    assert state.timeout_ref == nil
   end
 
   test "update_after_place/5 updates the state after placing a piece" do
@@ -79,7 +79,6 @@ defmodule NineMensMorris.Game.StateTest do
 
   test "check_winner/2 detects a winner when opponent is blocked" do
     state = State.new("game-1")
-    # Create a board where black is blocked
     positions = Map.new(Board.new().positions, fn {pos, _} -> {pos, :white} end)
     positions = Map.put(positions, :a1, :black)
     positions = Map.put(positions, :a4, :black)
@@ -94,18 +93,20 @@ defmodule NineMensMorris.Game.StateTest do
     assert reason == :blocked
   end
 
-  test "add_player/2 adds players to the game" do
+  test "add_player/3 adds players to the game" do
     state = State.new("game-1")
 
-    {:ok, player_color, updated_state} = State.add_player(state, self())
+    {:ok, player_color, updated_state} = State.add_player(state, self(), nil)
     assert player_color == :black
     assert map_size(updated_state.players) == 1
 
-    {:ok, player_color, updated_state} = State.add_player(updated_state, spawn(fn -> nil end))
+    {:ok, player_color, updated_state} =
+      State.add_player(updated_state, spawn(fn -> nil end), nil)
+
     assert player_color == :white
     assert map_size(updated_state.players) == 2
 
-    {:error, reason, _} = State.add_player(updated_state, spawn(fn -> nil end))
+    {:error, reason, _} = State.add_player(updated_state, spawn(fn -> nil end), nil)
     assert reason == :game_full
   end
 
@@ -113,7 +114,7 @@ defmodule NineMensMorris.Game.StateTest do
     state = State.new("game-1")
     pid = self()
 
-    {:ok, _, state_with_player} = State.add_player(state, pid)
+    {:ok, _, state_with_player} = State.add_player(state, pid, nil)
     updated_state = State.remove_player(state_with_player, pid)
 
     assert map_size(updated_state.players) == 0

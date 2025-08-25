@@ -30,59 +30,151 @@ defmodule NineMensMorrisWeb.GameLive do
     {175, 175}
   ]
 
+  @valid_positions [
+    :a1,
+    :d1,
+    :g1,
+    :b2,
+    :d2,
+    :f2,
+    :c3,
+    :d3,
+    :e3,
+    :a4,
+    :b4,
+    :c4,
+    :e4,
+    :f4,
+    :g4,
+    :c5,
+    :d5,
+    :e5,
+    :b6,
+    :d6,
+    :f6,
+    :a7,
+    :d7,
+    :g7
+  ]
+
   @impl true
-  def mount(%{"game_id" => game_id}, _session, socket) do
+  def mount(%{"game_id" => game_id}, session, socket) do
     game = "game:#{game_id}"
 
-    {:ok, game_state} = Game.init(game_id)
+    case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
+      [{_pid, _}] ->
+        game_state = Game.get_game_state(game_id)
+        socket = assign_initial_state(socket, game_id, game_state)
 
-    socket =
-      socket
-      |> assign(:game_id, game_id)
-      |> assign(:player, nil)
-      |> assign(board: game_state.board)
-      |> assign(current_player: nil)
-      |> assign(board_coordinates: @board_coordinates)
-      |> assign(placed_pieces: %{})
-      |> assign(:winner, nil)
-      |> assign(:game_full, false)
-      |> assign(:awaiting_player, true)
-      |> assign(:can_capture, false)
-      |> assign(:captures, %{black: 0, white: 0})
-      |> assign(:selected_piece, nil)
-      |> assign(:phase, :placement)
+        if connected?(socket) do
+          handle_connected_mount(socket, game, game_id, session)
+        else
+          {:ok, socket}
+        end
 
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(NineMensMorris.PubSub, game)
+      [] ->
+        {:ok, push_navigate(socket, to: ~p"/lobby?error=Game not found")}
+    end
+  end
 
-      case Game.start_or_get(game_id) do
-        {:ok, _pid} ->
-          case Game.join(game_id, self()) do
-            {:ok, player} ->
-              {:ok,
-               socket
-               |> assign(:player, player)
-               |> assign(:awaiting_player?, true)
-               |> assign(:current_player, Game.current_player(game_id))}
+  defp handle_connected_mount(socket, game, game_id, session) do
+    Phoenix.PubSub.subscribe(NineMensMorris.PubSub, game)
+    {:ok, updated_socket} = join_game(socket, game_id, session)
 
-            {:error, _reason} ->
-              {:ok, socket |> assign(:game_full, true)}
-          end
+    if updated_socket.assigns[:needs_presence_tracking] do
+      Process.send_after(self(), :track_presence, 100)
+    end
 
-        {:error, _reason} ->
-          {:ok, socket |> assign(:game_full, true)}
-      end
-    else
-      {:ok, socket}
+    {:ok, updated_socket}
+  end
+
+  defp assign_initial_state(socket, game_id, game_state) do
+    placed_pieces = build_placed_pieces_from_board(game_state.board)
+
+    socket
+    |> assign(:game_id, game_id)
+    |> assign(:player, nil)
+    |> assign(board: game_state.board)
+    |> assign(current_player: game_state.current_player)
+    |> assign(board_coordinates: @board_coordinates)
+    |> assign(placed_pieces: placed_pieces)
+    |> assign(:winner, game_state.winner)
+    |> assign(:game_full, false)
+    |> assign(:awaiting_player, map_size(game_state.players) < 2)
+    |> assign(:can_capture, false)
+    |> assign(:captures, game_state.captures)
+    |> assign(:selected_piece, nil)
+    |> assign(:phase, game_state.phase)
+    |> assign(:opponent_cursors, %{})
+  end
+
+  defp join_game(socket, game_id, session) do
+    session_id = Map.get(session, "player_session_id") || generate_session_id()
+
+    case Game.start_or_get(game_id) do
+      {:ok, _pid} ->
+        case Game.join(game_id, self(), session_id) do
+          {:ok, player} ->
+            updated_game_state = Game.get_game_state(game_id)
+            updated_placed_pieces = build_placed_pieces_from_board(updated_game_state.board)
+
+            {:ok,
+             socket
+             |> assign(:player, player)
+             |> assign(:awaiting_player?, map_size(updated_game_state.players) < 2)
+             |> assign(:current_player, updated_game_state.current_player)
+             |> assign(:board, updated_game_state.board)
+             |> assign(:placed_pieces, updated_placed_pieces)
+             |> assign(:winner, updated_game_state.winner)
+             |> assign(:captures, updated_game_state.captures)
+             |> assign(:phase, updated_game_state.phase)
+             |> assign(:player_session_id, session_id)
+             |> assign(:needs_presence_tracking, true)}
+
+          {:error, _reason} ->
+            {:ok, socket |> assign(:game_full, true)}
+        end
+
+      {:error, _reason} ->
+        {:ok, socket |> assign(:game_full, true)}
     end
   end
 
   @impl true
-  def handle_event("place_piece", %{"position" => position_str}, socket) do
-    position = String.to_atom(position_str)
-    current_player = socket.assigns.current_player
+  def terminate(_reason, socket) do
+    if socket.assigns[:player] do
+      NineMensMorrisWeb.Presence.untrack(
+        self(),
+        "game:#{socket.assigns.game_id}",
+        socket.assigns.player
+      )
+    end
+  end
 
-    if current_player == socket.assigns.player do
+  @impl true
+  def handle_event("cursor_move", %{"x" => x, "y" => y}, socket) do
+    player = socket.assigns.player
+    game_id = socket.assigns.game_id
+
+    if player do
+      cursor_x = x
+      cursor_y = y
+
+      try do
+        NineMensMorrisWeb.Presence.update_cursor(game_id, self(), player, cursor_x, cursor_y)
+      rescue
+        _ -> :ok
+      end
+    end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("place_piece", %{"position" => position_str}, socket) do
+    with {:ok, position} <- validate_position(position_str),
+         current_player = socket.assigns.current_player,
+         true <- current_player == socket.assigns.player do
       case Game.place_piece(socket.assigns.game_id, position, current_player) do
         {:ok, new_board} ->
           coordinates = BoardCoordinates.get_coordinates(position)
@@ -101,15 +193,16 @@ defmodule NineMensMorrisWeb.GameLive do
           {:noreply, socket}
       end
     else
-      {:noreply, socket |> put_flash(:error, "Not your turn")}
+      _ ->
+        {:noreply, socket |> put_flash(:error, "Not your turn")}
     end
   end
 
   @impl true
   def handle_event("remove_piece", %{"position" => position_str}, socket) do
-    position = String.to_atom(position_str)
-
-    if socket.assigns.can_capture && socket.assigns.current_player == socket.assigns.player do
+    with {:ok, position} <- validate_position(position_str),
+         true <-
+           socket.assigns.can_capture && socket.assigns.current_player == socket.assigns.player do
       case Game.remove_piece(socket.assigns.game_id, position, socket.assigns.mill_forming_player) do
         {:ok, new_board} ->
           coordinates = BoardCoordinates.get_coordinates(position)
@@ -128,27 +221,30 @@ defmodule NineMensMorrisWeb.GameLive do
           {:noreply, socket}
       end
     else
-      {:noreply, socket}
+      _ ->
+        {:noreply, socket}
     end
   end
 
   @impl true
   def handle_event("select_piece", %{"position" => position_str}, socket) do
-    if socket.assigns.current_player == socket.assigns.player &&
-         socket.assigns.board.positions[String.to_atom(position_str)] == socket.assigns.player do
-      {:noreply, socket |> assign(:selected_piece, String.to_atom(position_str))}
+    with {:ok, position} <- validate_position(position_str),
+         true <-
+           socket.assigns.current_player == socket.assigns.player &&
+             socket.assigns.board.positions[position] == socket.assigns.player do
+      {:noreply, socket |> assign(:selected_piece, position)}
     else
-      {:noreply, socket}
+      _ ->
+        {:noreply, socket}
     end
   end
 
   @impl true
   def handle_event("move_piece", %{"position" => to_pos_str}, socket) do
-    to_pos = String.to_atom(to_pos_str)
-    from_pos = socket.assigns.selected_piece
-    current_player = socket.assigns.current_player
-
-    if from_pos && current_player == socket.assigns.player do
+    with {:ok, to_pos} <- validate_position(to_pos_str),
+         from_pos = socket.assigns.selected_piece,
+         current_player = socket.assigns.current_player,
+         true <- from_pos && current_player == socket.assigns.player do
       case Game.move_piece(socket.assigns.game_id, from_pos, to_pos, current_player) do
         {:ok, new_board} ->
           coordinates_from = BoardCoordinates.get_coordinates(from_pos)
@@ -171,7 +267,8 @@ defmodule NineMensMorrisWeb.GameLive do
           {:noreply, socket |> assign(:selected_piece, nil)}
       end
     else
-      {:noreply, socket}
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -299,12 +396,87 @@ defmodule NineMensMorrisWeb.GameLive do
 
   @impl true
   def handle_info({:game_ended, :victory, player, by}, socket) do
-    {:noreply, socket |> assign(:winner, player) |> put_flash(:info, "Game Ended by #{by}")}
+    message =
+      case by do
+        :opponent_disconnected -> "Opponent didn't return within 3 minutes. You win!"
+        _ -> "Game Ended by #{by}"
+      end
+
+    {:noreply, socket |> assign(:winner, player) |> put_flash(:info, message)}
   end
 
-  defp player_color(:white), do: "white"
-  defp player_color(:black), do: "black"
+  @impl true
+  def handle_info({:game_ended, :player_left}, socket) do
+    {:noreply,
+     socket |> assign(:winner, :game_abandoned) |> put_flash(:error, "Game ended - opponent left")}
+  end
+
+  @impl true
+  def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff", payload: _diff}, socket) do
+    try do
+      presence_list = NineMensMorrisWeb.Presence.list_game(socket.assigns.game_id)
+
+      opponent_cursors =
+        presence_list
+        |> Enum.filter(fn {player, _} -> player != socket.assigns.player end)
+        |> Enum.map(fn {player, %{metas: [meta | _]}} ->
+          {player, %{x: meta.cursor_x, y: meta.cursor_y}}
+        end)
+        |> Map.new()
+
+      {:noreply, assign(socket, :opponent_cursors, opponent_cursors)}
+    rescue
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info(:track_presence, socket) do
+    if socket.assigns[:needs_presence_tracking] && socket.assigns[:player] do
+      try do
+        NineMensMorrisWeb.Presence.track_cursor(
+          socket.assigns.game_id,
+          self(),
+          socket.assigns.player,
+          0,
+          0
+        )
+
+        {:noreply, assign(socket, :needs_presence_tracking, false)}
+      rescue
+        _ -> {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp player_color(player) when player in [:white, "white"], do: "white"
+  defp player_color(player) when player in [:black, "black"], do: "black"
 
   defp next_player(:white), do: :black
   defp next_player(:black), do: :white
+
+  defp validate_position(position_str) do
+    try do
+      position = String.to_existing_atom(position_str)
+      if position in @valid_positions, do: {:ok, position}, else: :error
+    rescue
+      ArgumentError -> :error
+    end
+  end
+
+  defp generate_session_id do
+    :crypto.strong_rand_bytes(16) |> Base.encode64()
+  end
+
+  defp build_placed_pieces_from_board(board) do
+    board.positions
+    |> Enum.filter(fn {_position, player} -> player != nil end)
+    |> Enum.map(fn {position, player} ->
+      coordinates = BoardCoordinates.get_coordinates(position)
+      {coordinates, player}
+    end)
+    |> Map.new()
+  end
 end

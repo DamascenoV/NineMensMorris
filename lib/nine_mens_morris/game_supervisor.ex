@@ -20,4 +20,8 @@ defmodule NineMensMorris.GameSupervisor do
   def start_game(game_id) do
     DynamicSupervisor.start_child(__MODULE__, {NineMensMorris.Game, game_id})
   end
+
+  def start_game(game_id, password) do
+    DynamicSupervisor.start_child(__MODULE__, {NineMensMorris.Game, {game_id, password}})
+  end
 end

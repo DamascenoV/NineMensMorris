@@ -11,6 +11,7 @@ defmodule NineMensMorris.Application do
       NineMensMorrisWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:nine_mens_morris, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: NineMensMorris.PubSub},
+      NineMensMorrisWeb.Presence,
       NineMensMorrisWeb.Endpoint,
       NineMensMorris.GameRegistry,
       NineMensMorris.GameSupervisor
