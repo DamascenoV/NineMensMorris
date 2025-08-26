@@ -62,6 +62,7 @@ defmodule NineMensMorris.Game do
     case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
       [{pid, _}] ->
         IO.inspect("Game found, attempting to join with password", label: "GAME_DEBUG")
+
         case GenServer.call(via_tuple(game_id), {:join_with_password, self(), password}) do
           {:ok, player_color} ->
             IO.inspect("Successfully joined game as #{player_color}", label: "GAME_DEBUG")
