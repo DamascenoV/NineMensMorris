@@ -155,6 +155,8 @@ defmodule NineMensMorris.Board do
     |> Enum.count(&(&1 == player))
   end
 
+  @spec move_piece(t(), t_position(), t_position(), t_player(), atom()) ::
+          {:ok, t()} | {:error, atom()}
   def move_piece(board, from_pos, to_pos, player, phase) do
     cond do
       board.positions[from_pos] != player ->

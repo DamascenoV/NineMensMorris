@@ -2,6 +2,7 @@ defmodule NineMensMorrisWeb.GameLive do
   use NineMensMorrisWeb, :live_view
   alias NineMensMorris.Game
   alias NineMensMorris.BoardCoordinates
+  alias NineMensMorrisWeb.GameLiveHelpers
 
   @board_coordinates [
     {50, 50},
@@ -28,33 +29,6 @@ defmodule NineMensMorrisWeb.GameLive do
     {125, 175},
     {150, 175},
     {175, 175}
-  ]
-
-  @valid_positions [
-    :a1,
-    :d1,
-    :g1,
-    :b2,
-    :d2,
-    :f2,
-    :c3,
-    :d3,
-    :e3,
-    :a4,
-    :b4,
-    :c4,
-    :e4,
-    :f4,
-    :g4,
-    :c5,
-    :d5,
-    :e5,
-    :b6,
-    :d6,
-    :f6,
-    :a7,
-    :d7,
-    :g7
   ]
 
   @impl true
@@ -89,7 +63,7 @@ defmodule NineMensMorrisWeb.GameLive do
   end
 
   defp assign_initial_state(socket, game_id, game_state) do
-    placed_pieces = build_placed_pieces_from_board(game_state.board)
+    placed_pieces = GameLiveHelpers.build_placed_pieces_from_board(game_state.board)
 
     socket
     |> assign(:game_id, game_id)
@@ -109,14 +83,16 @@ defmodule NineMensMorrisWeb.GameLive do
   end
 
   defp join_game(socket, game_id, session) do
-    session_id = Map.get(session, "player_session_id") || generate_session_id()
+    session_id = Map.get(session, "player_session_id") || GameLiveHelpers.generate_session_id()
 
     case Game.start_or_get(game_id) do
       {:ok, _pid} ->
         case Game.join(game_id, self(), session_id) do
           {:ok, player} ->
             updated_game_state = Game.get_game_state(game_id)
-            updated_placed_pieces = build_placed_pieces_from_board(updated_game_state.board)
+
+            updated_placed_pieces =
+              GameLiveHelpers.build_placed_pieces_from_board(updated_game_state.board)
 
             {:ok,
              socket
@@ -172,7 +148,7 @@ defmodule NineMensMorrisWeb.GameLive do
 
   @impl true
   def handle_event("place_piece", %{"position" => position_str}, socket) do
-    with {:ok, position} <- validate_position(position_str),
+    with {:ok, position} <- GameLiveHelpers.validate_position(position_str),
          current_player = socket.assigns.current_player,
          true <- current_player == socket.assigns.player do
       case Game.place_piece(socket.assigns.game_id, position, current_player) do
@@ -200,7 +176,7 @@ defmodule NineMensMorrisWeb.GameLive do
 
   @impl true
   def handle_event("remove_piece", %{"position" => position_str}, socket) do
-    with {:ok, position} <- validate_position(position_str),
+    with {:ok, position} <- GameLiveHelpers.validate_position(position_str),
          true <-
            socket.assigns.can_capture && socket.assigns.current_player == socket.assigns.player do
       case Game.remove_piece(socket.assigns.game_id, position, socket.assigns.mill_forming_player) do
@@ -228,7 +204,7 @@ defmodule NineMensMorrisWeb.GameLive do
 
   @impl true
   def handle_event("select_piece", %{"position" => position_str}, socket) do
-    with {:ok, position} <- validate_position(position_str),
+    with {:ok, position} <- GameLiveHelpers.validate_position(position_str),
          true <-
            socket.assigns.current_player == socket.assigns.player &&
              socket.assigns.board.positions[position] == socket.assigns.player do
@@ -241,7 +217,7 @@ defmodule NineMensMorrisWeb.GameLive do
 
   @impl true
   def handle_event("move_piece", %{"position" => to_pos_str}, socket) do
-    with {:ok, to_pos} <- validate_position(to_pos_str),
+    with {:ok, to_pos} <- GameLiveHelpers.validate_position(to_pos_str),
          from_pos = socket.assigns.selected_piece,
          current_player = socket.assigns.current_player,
          true <- from_pos && current_player == socket.assigns.player do
@@ -451,32 +427,9 @@ defmodule NineMensMorrisWeb.GameLive do
     end
   end
 
-  defp player_color(player) when player in [:white, "white"], do: "white"
-  defp player_color(player) when player in [:black, "black"], do: "black"
-
   defp next_player(:white), do: :black
   defp next_player(:black), do: :white
 
-  defp validate_position(position_str) do
-    try do
-      position = String.to_existing_atom(position_str)
-      if position in @valid_positions, do: {:ok, position}, else: :error
-    rescue
-      ArgumentError -> :error
-    end
-  end
-
-  defp generate_session_id do
-    :crypto.strong_rand_bytes(16) |> Base.encode64()
-  end
-
-  defp build_placed_pieces_from_board(board) do
-    board.positions
-    |> Enum.filter(fn {_position, player} -> player != nil end)
-    |> Enum.map(fn {position, player} ->
-      coordinates = BoardCoordinates.get_coordinates(position)
-      {coordinates, player}
-    end)
-    |> Map.new()
-  end
+  defp player_color(player) when player in [:white, "white"], do: "white"
+  defp player_color(player) when player in [:black, "black"], do: "black"
 end

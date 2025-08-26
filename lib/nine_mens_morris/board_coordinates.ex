@@ -39,6 +39,8 @@ defmodule NineMensMorris.BoardCoordinates do
     {175, 175} => :e5
   }
 
+  @reverse_coordinates Map.new(@board_coordinates, fn {coord, pos} -> {pos, coord} end)
+
   @adjacent_positions %{
     a1: [:a4, :d1],
     a4: [:a1, :a7, :b4],
@@ -77,9 +79,7 @@ defmodule NineMensMorris.BoardCoordinates do
 
   @spec get_coordinates(atom()) :: {number(), number()} | nil
   def get_coordinates(position) do
-    Enum.find_value(@board_coordinates, fn {{x, y}, pos} ->
-      if pos == position, do: {x, y}
-    end)
+    Map.get(@reverse_coordinates, position)
   end
 
   @spec adjacent_positions?(atom(), atom()) :: boolean()

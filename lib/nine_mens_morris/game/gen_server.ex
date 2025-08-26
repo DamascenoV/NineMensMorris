@@ -130,6 +130,7 @@ defmodule NineMensMorris.Game do
     end
   end
 
+  @impl true
   def init({game_id, password}) do
     IO.inspect("=== GAME INIT START ===", label: "GAME_INIT_DEBUG")
     IO.inspect("Game ID: #{game_id}, Password: #{password}", label: "GAME_INIT_DEBUG")
@@ -154,6 +155,7 @@ defmodule NineMensMorris.Game do
     end
   end
 
+  @impl true
   def init(game_id) do
     IO.inspect("=== GAME INIT START (no password) ===", label: "GAME_INIT_DEBUG")
     IO.inspect("Game ID: #{game_id}", label: "GAME_INIT_DEBUG")
@@ -345,19 +347,19 @@ defmodule NineMensMorris.Game do
   end
 
   @impl true
-  def handle_info(:timeout, state) do
-    IO.inspect("Game timeout reached for game: #{state.game_id}", label: "GAME_DEBUG")
-    broadcast(state.game_id, {:game_ended, :timeout})
-    {:stop, :normal, state}
-  end
-
-  @impl true
   def terminate(reason, state) do
     IO.inspect("=== GAME TERMINATING ===", label: "GAME_DEBUG")
     IO.inspect("Game ID: #{state.game_id}", label: "GAME_DEBUG")
     IO.inspect("Reason: #{inspect(reason)}", label: "GAME_DEBUG")
     IO.inspect("State: #{inspect(state, limit: :infinity)}", label: "GAME_DEBUG")
     IO.inspect("=== GAME TERMINATED ===", label: "GAME_DEBUG")
+  end
+
+  @impl true
+  def handle_info(:timeout, state) do
+    IO.inspect("Game timeout reached for game: #{state.game_id}", label: "GAME_DEBUG")
+    broadcast(state.game_id, {:game_ended, :timeout})
+    {:stop, :normal, state}
   end
 
   @impl true
