@@ -6,32 +6,39 @@ defmodule NineMensMorris.Game.ActionsTest do
 
   test "place_piece/3 places a piece and updates game state" do
     state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
 
-    {:ok, new_state, result} = Actions.place_piece(state, :a1, :black)
+    {:ok, new_state, result} = Actions.place_piece(state, :a1, :white)
 
-    assert new_state.board.positions[:a1] == :black
-    assert new_state.current_player == :white
+    assert new_state.board.positions[:a1] == :white
+    assert new_state.current_player == :black
     assert result.position == :a1
-    assert result.player == :black
-    assert result.current_player == :white
+    assert result.player == :white
+    assert result.current_player == :black
   end
 
   test "place_piece/3 handles errors correctly" do
     state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
 
-    {:error, reason, _} = Actions.place_piece(state, :a1, :white)
+    {:error, reason, _} = Actions.place_piece(state, :a1, :black)
     assert reason == :not_your_turn
   end
 
   test "place_piece/3 detects formed mills" do
     state = State.new("game-1")
+    player1 = self()
+    player2 = spawn(fn -> :timer.sleep(1000) end)
 
-    {:ok, state, _} = Actions.place_piece(state, :a1, :black)
-    {:ok, state, _} = Actions.place_piece(state, :b2, :white)
-    {:ok, state, _} = Actions.place_piece(state, :a4, :black)
-    {:ok, state, _} = Actions.place_piece(state, :b4, :white)
+    {:ok, :white, state} = State.add_player(state, player1, nil)
+    {:ok, :black, state} = State.add_player(state, player2, nil)
 
-    {:ok, _, result} = Actions.place_piece(state, :a7, :black)
+    {:ok, state, _} = Actions.place_piece(state, :a1, :white)
+    {:ok, state, _} = Actions.place_piece(state, :b2, :black)
+    {:ok, state, _} = Actions.place_piece(state, :a4, :white)
+    {:ok, state, _} = Actions.place_piece(state, :b4, :black)
+
+    {:ok, _, result} = Actions.place_piece(state, :a7, :white)
 
     assert length(result.new_mills) == 1
     assert hd(result.new_mills) == [:a1, :a4, :a7]
@@ -39,47 +46,56 @@ defmodule NineMensMorris.Game.ActionsTest do
 
   test "move_piece/4 moves a piece and updates game state" do
     state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
     board = Board.new()
-    {:ok, board} = Board.place_piece(board, :a1, :black)
+    {:ok, board} = Board.place_piece(board, :a1, :white)
     state = %{state | board: board, phase: :move}
 
-    {:ok, new_state, result, _} = Actions.move_piece(state, :a1, :a4, :black)
+    {:ok, new_state, result, _} = Actions.move_piece(state, :a1, :a4, :white)
 
     assert new_state.board.positions[:a1] == nil
-    assert new_state.board.positions[:a4] == :black
+    assert new_state.board.positions[:a4] == :white
     assert result.from == :a1
     assert result.to == :a4
-    assert result.player == :black
+    assert result.player == :white
   end
 
   test "move_piece/4 handles validation errors" do
     state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
     board = Board.new()
-    {:ok, board} = Board.place_piece(board, :a1, :black)
+    {:ok, board} = Board.place_piece(board, :a1, :white)
     state = %{state | board: board, phase: :move}
 
-    {:error, reason, _} = Actions.move_piece(state, :a1, :g7, :black)
+    {:error, reason, _} = Actions.move_piece(state, :a1, :g7, :white)
     assert reason == :invalid_move
 
-    {:error, reason, _} = Actions.move_piece(state, :a1, :a4, :white)
+    {:error, reason, _} = Actions.move_piece(state, :a1, :a4, :black)
     assert reason == :not_your_turn
   end
 
   test "move_piece/4 detects when a mill is formed" do
     state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
     board = Board.new()
-    {:ok, board} = Board.place_piece(board, :a1, :black)
-    {:ok, board} = Board.place_piece(board, :a7, :black)
-    {:ok, board} = Board.place_piece(board, :b4, :black)
+    {:ok, board} = Board.place_piece(board, :a1, :white)
+    {:ok, board} = Board.place_piece(board, :a7, :white)
+    {:ok, board} = Board.place_piece(board, :b4, :white)
     state = %{state | board: board, phase: :move}
 
-    {:ok, _, result, _} = Actions.move_piece(state, :b4, :a4, :black)
+    {:ok, _, result, _} = Actions.move_piece(state, :b4, :a4, :white)
 
     assert hd(result.new_mills) == [:a1, :a4, :a7]
   end
 
   test "remove_piece/3 removes an opponent's piece" do
     state = State.new("game-1")
+    player1 = self()
+    player2 = spawn(fn -> :timer.sleep(1000) end)
+
+    {:ok, :white, state} = State.add_player(state, player1, nil)
+    {:ok, :black, state} = State.add_player(state, player2, nil)
+
     board = Board.new()
     {:ok, board} = Board.place_piece(board, :a1, :white)
     state = %{state | board: board}
@@ -95,20 +111,26 @@ defmodule NineMensMorris.Game.ActionsTest do
 
   test "remove_piece/3 handles errors" do
     state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
 
-    {:error, reason, _} = Actions.remove_piece(state, :a1, :black)
+    {:error, reason, _} = Actions.remove_piece(state, :a1, :white)
     assert reason == :invalid_piece_removal
 
     board = Board.new()
-    {:ok, board} = Board.place_piece(board, :a1, :black)
+    {:ok, board} = Board.place_piece(board, :a1, :white)
     state = %{state | board: board}
 
-    {:error, reason, _} = Actions.remove_piece(state, :a1, :black)
+    {:error, reason, _} = Actions.remove_piece(state, :a1, :white)
     assert reason == :invalid_piece_removal
   end
 
   test "remove_piece/3 detects win conditions" do
     state = State.new("game-1")
+    player1 = self()
+    player2 = spawn(fn -> :timer.sleep(1000) end)
+
+    {:ok, :white, state} = State.add_player(state, player1, nil)
+    {:ok, :black, state} = State.add_player(state, player2, nil)
 
     board = %Board{
       positions: %{
@@ -128,5 +150,47 @@ defmodule NineMensMorris.Game.ActionsTest do
 
     assert win_reason == :pieces
     assert final_state.winner == :black
+  end
+
+  test "place_piece/3 handles invalid positions" do
+    state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
+
+    state = %{
+      state
+      | board: %{state.board | positions: Map.put(state.board.positions, :invalid_pos, :white)}
+    }
+
+    {:error, reason, _} = Actions.place_piece(state, :invalid_pos, :white)
+    assert reason in [:invalid_position, :position_occupied]
+  end
+
+  test "move_piece/4 handles board-level errors" do
+    state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
+
+    board = Board.new()
+    {:ok, board} = Board.place_piece(board, :a1, :white)
+    state = %{state | board: board, phase: :move}
+
+    {:ok, board} = Board.place_piece(board, :a4, :black)
+    state = %{state | board: board}
+
+    {:error, reason, _} = Actions.move_piece(state, :a1, :a4, :white)
+    assert reason == :position_occupied
+  end
+
+  test "remove_piece/3 handles board-level errors" do
+    state = State.new("game-1")
+    {:ok, :white, state} = State.add_player(state, self(), nil)
+
+    board = Board.new()
+    {:ok, board} = Board.place_piece(board, :a1, :white)
+    {:ok, board} = Board.place_piece(board, :a4, :white)
+    {:ok, board} = Board.place_piece(board, :a7, :white)
+    state = %{state | board: board}
+
+    {:error, reason, _} = Actions.remove_piece(state, :a1, :white)
+    assert reason == :invalid_piece_removal
   end
 end

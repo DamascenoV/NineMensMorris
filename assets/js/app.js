@@ -53,6 +53,21 @@ Hooks.CursorTracker = {
   }
 }
 
+Hooks.CopyToClipboard = {
+  mounted() {
+    this.el.addEventListener("click", () => {
+      const gameId = this.el.dataset.gameId
+      if (gameId && navigator.clipboard) {
+        navigator.clipboard.writeText(gameId).then(() => {
+          // The button text and color will be updated via LiveView
+        }).catch(err => {
+          console.error('Failed to copy: ', err)
+        })
+      }
+    })
+  }
+}
+
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},

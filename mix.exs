@@ -72,7 +72,8 @@ defmodule NineMensMorris.MixProject do
         "tailwind nine_mens_morris --minify",
         "esbuild nine_mens_morris --minify",
         "phx.digest"
-      ]
+      ],
+      precommit: ["compile", "credo", "test"]
     ]
   end
 end

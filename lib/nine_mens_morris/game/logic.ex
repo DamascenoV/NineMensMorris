@@ -64,29 +64,35 @@ defmodule NineMensMorris.Game.Logic do
   """
   @spec can_player_move?(Board.t(), atom(), atom()) :: boolean()
   def can_player_move?(board, player, phase) do
-    player_positions =
-      board.positions
-      |> Enum.filter(fn {_, piece_owner} -> piece_owner == player end)
-      |> Enum.map(fn {pos, _} -> pos end)
-
-    empty_positions =
-      board.positions
-      |> Enum.filter(fn {_, piece_owner} -> piece_owner == nil end)
-      |> Enum.map(fn {pos, _} -> pos end)
+    empty_positions = get_empty_positions(board)
 
     case phase do
       :flying ->
-        Enum.count(empty_positions) > 0
+        not Enum.empty?(empty_positions)
 
       :move ->
-        Enum.any?(player_positions, fn pos ->
-          adjacent = BoardCoordinates.get_adjacent_positions(pos)
-          Enum.any?(adjacent, &Enum.member?(empty_positions, &1))
-        end)
+        can_player_move_in_move_phase?(board, player, empty_positions)
 
       _ ->
         true
     end
+  end
+
+  defp get_empty_positions(board) do
+    board.positions
+    |> Enum.filter(fn {_, piece_owner} -> piece_owner == nil end)
+    |> Enum.map(fn {pos, _} -> pos end)
+  end
+
+  defp can_player_move_in_move_phase?(board, player, empty_positions) do
+    empty_set = MapSet.new(empty_positions)
+
+    board.positions
+    |> Enum.filter(fn {_, piece_owner} -> piece_owner == player end)
+    |> Enum.any?(fn {pos, _} ->
+      adjacent = BoardCoordinates.get_adjacent_positions(pos)
+      Enum.any?(adjacent, &MapSet.member?(empty_set, &1))
+    end)
   end
 
   @doc """

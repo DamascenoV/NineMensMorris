@@ -10,8 +10,7 @@ defmodule NineMensMorris.Game.Actions do
 
   alias NineMensMorris.Board
   alias NineMensMorris.BoardCoordinates
-  alias NineMensMorris.Game.State
-  alias NineMensMorris.Game.Logic
+  alias NineMensMorris.Game.{State, Logic, Errors}
 
   @doc """
   Handles the place piece action.
@@ -19,33 +18,49 @@ defmodule NineMensMorris.Game.Actions do
   @spec place_piece(State.t(), atom(), atom()) ::
           {:ok, State.t(), map()} | {:error, atom(), State.t()}
   def place_piece(state, position, player) do
-    if state.current_player != player do
-      {:error, :not_your_turn, state}
-    else
-      case Board.place_piece(state.board, position, player) do
-        {:ok, new_board} ->
-          coordinates = BoardCoordinates.get_coordinates(position)
-          new_phase = Logic.update_game_phase(new_board, player, state.phase)
+    cond do
+      state.current_player != player ->
+        Errors.with_state(:not_your_turn, state)
 
-          {updated_mills, new_formed_mills, _} =
-            Logic.update_mills(state, new_board, player, nil, position)
+      BoardCoordinates.get_coordinates(position) == nil ->
+        Errors.with_state(:invalid_position, state)
 
-          new_state = State.update_after_place(state, new_board, player, new_phase, updated_mills)
+      state.board.positions[position] != nil ->
+        Errors.with_state(:position_occupied, state)
 
-          result = %{
-            position: position,
-            player: player,
-            current_player: State.next_player(player),
-            phase: new_phase,
-            coordinates: coordinates,
-            new_mills: new_formed_mills
-          }
+      true ->
+        case Board.place_piece(state.board, position, player) do
+          {:ok, new_board} ->
+            coordinates = BoardCoordinates.get_coordinates(position)
+            new_phase = Logic.update_game_phase(new_board, player, state.phase)
 
-          {:ok, new_state, result}
+            {updated_mills, new_formed_mills, _} =
+              Logic.update_mills(state, new_board, player, nil, position)
 
-        {:error, reason} ->
-          {:error, reason, state}
-      end
+            new_state =
+              State.update_after_place(state, new_board, player, new_phase, updated_mills)
+
+            result = %{
+              position: position,
+              player: player,
+              current_player: State.next_player(player),
+              phase: new_phase,
+              coordinates: coordinates,
+              new_mills: new_formed_mills
+            }
+
+            {:ok, new_state, result}
+
+          {:error, reason} ->
+            game_error =
+              case reason do
+                "No more pieces available" -> :invalid_move
+                "Cannot remove piece" -> :invalid_piece_removal
+                _ -> :invalid_move
+              end
+
+            Errors.with_state(game_error, state)
+        end
     end
   end
 
@@ -94,11 +109,19 @@ defmodule NineMensMorris.Game.Actions do
             {:ok, new_state, result, win_reason}
 
           {:error, reason} ->
-            {:error, reason, state}
+            game_error =
+              case reason do
+                :invalid_piece -> :invalid_piece
+                :position_occupied -> :position_occupied
+                :invalid_move -> :invalid_move
+                _ -> :invalid_move
+              end
+
+            Errors.with_state(game_error, state)
         end
 
       {:error, reason} ->
-        {:error, reason, state}
+        Errors.with_state(reason, state)
     end
   end
 
@@ -110,8 +133,11 @@ defmodule NineMensMorris.Game.Actions do
   def remove_piece(state, position, player) do
     opponent = State.next_player(player)
 
-    case state.board.positions[position] do
-      ^opponent ->
+    cond do
+      state.board.positions[position] != opponent ->
+        Errors.with_state(:invalid_piece_removal, state)
+
+      true ->
         case Board.remove_piece(state.board, position, player) do
           {:ok, new_board} ->
             coordinates = BoardCoordinates.get_coordinates(position)
@@ -131,11 +157,15 @@ defmodule NineMensMorris.Game.Actions do
             {:ok, new_state, result, win_reason}
 
           {:error, reason} ->
-            {:error, reason, state}
-        end
+            game_error =
+              case reason do
+                "Cannot remove piece in a mill" -> :invalid_piece_removal
+                "Cannot remove piece" -> :invalid_piece_removal
+                _ -> :invalid_move
+              end
 
-      _ ->
-        {:error, :invalid_piece_removal, state}
+            Errors.with_state(game_error, state)
+        end
     end
   end
 end

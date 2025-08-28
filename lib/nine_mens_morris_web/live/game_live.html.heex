@@ -22,7 +22,24 @@
           <p class="text-blue-500 text-2xl mb-2">
             You are player <span class="font-bold">{@player}</span>
           </p>
-          <p class="text-gray-700 mb-4">Waiting for another player to join...</p>
+          <p class="text-gray-700 mb-2">Waiting for another player to join...</p>
+          <div class="bg-gray-100 p-4 rounded-lg mb-4">
+            <p class="text-sm text-gray-600 mb-1">Share this Game ID:</p>
+            <div class="flex items-center gap-2">
+              <code class="bg-white px-3 py-2 rounded border font-mono text-lg font-bold text-gray-800 select-all">
+                {@game_id}
+              </code>
+              <button
+                id="copy-game-id-btn"
+                class={"px-3 py-2 rounded transition-colors text-sm #{if @game_id_copied, do: "bg-green-500 hover:bg-green-600", else: "bg-blue-500 hover:bg-blue-600"}"}
+                phx-click="copy_game_id"
+                phx-hook="CopyToClipboard"
+                data-game-id={@game_id}
+              >
+                {if @game_id_copied, do: "Copied!", else: "Copy"}
+              </button>
+            </div>
+          </div>
           <div class="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent mx-auto">
           </div>
         </div>

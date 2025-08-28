@@ -222,6 +222,11 @@ body {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
+.select-all {
+    user-select: all;
+    cursor: text;
+}
+
 /* Lobby styles */
 .lobby-container {
     @apply min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4;

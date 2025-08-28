@@ -32,6 +32,8 @@ defmodule NineMensMorrisWeb.ConnCase do
   end
 
   setup _tags do
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+    conn = Phoenix.ConnTest.build_conn()
+    conn = Plug.Test.init_test_session(conn, %{})
+    {:ok, conn: conn}
   end
 end

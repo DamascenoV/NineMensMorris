@@ -7,7 +7,7 @@ defmodule NineMensMorris.Game.StateTest do
     state = State.new("game-1")
 
     assert state.game_id == "game-1"
-    assert state.current_player == :black
+    assert state.current_player == nil
     assert state.phase == :placement
     assert state.captures == %{black: 0, white: 0}
     assert state.winner == nil
@@ -97,13 +97,14 @@ defmodule NineMensMorris.Game.StateTest do
     state = State.new("game-1")
 
     {:ok, player_color, updated_state} = State.add_player(state, self(), nil)
-    assert player_color == :black
+    assert player_color == :white
     assert map_size(updated_state.players) == 1
+    assert updated_state.current_player == :white
 
     {:ok, player_color, updated_state} =
       State.add_player(updated_state, spawn(fn -> nil end), nil)
 
-    assert player_color == :white
+    assert player_color == :black
     assert map_size(updated_state.players) == 2
 
     {:error, reason, _} = State.add_player(updated_state, spawn(fn -> nil end), nil)
@@ -133,5 +134,51 @@ defmodule NineMensMorris.Game.StateTest do
   test "next_player/1 returns the correct next player" do
     assert State.next_player(:black) == :white
     assert State.next_player(:white) == :black
+  end
+
+  test "valid_password?/2 validates passwords correctly" do
+    state_no_password = State.new("game-1")
+    state_with_password = State.new("game-1", "secret123")
+
+    assert State.valid_password?(state_no_password, nil) == true
+    assert State.valid_password?(state_no_password, "any") == true
+
+    assert State.valid_password?(state_with_password, "secret123") == true
+    assert State.valid_password?(state_with_password, "wrong") == false
+    assert State.valid_password?(state_with_password, nil) == false
+    assert State.valid_password?(state_with_password, "") == false
+  end
+
+  test "valid_password_for_creation?/1 validates password strength" do
+    assert State.valid_password_for_creation?(nil) == :ok
+    assert State.valid_password_for_creation?("valid123") == :ok
+    assert State.valid_password_for_creation?("a1b2c3d4") == :ok
+
+    assert State.valid_password_for_creation?("") ==
+             {:error, "Password must be at least 3 characters long"}
+
+    assert State.valid_password_for_creation?("ab") ==
+             {:error, "Password must be at least 3 characters long"}
+
+    assert State.valid_password_for_creation?(String.duplicate("a", 51)) ==
+             {:error, "Password must be no more than 50 characters"}
+
+    assert State.valid_password_for_creation?("pass word") ==
+             {:error, "Password can only contain letters, numbers, underscores, and hyphens"}
+
+    assert State.valid_password_for_creation?("pass@word") ==
+             {:error, "Password can only contain letters, numbers, underscores, and hyphens"}
+  end
+
+  test "handle_player_timeout/2 handles player timeouts correctly" do
+    state = State.new("game-1")
+    {:ok, _, state} = State.add_player(state, self(), "session-1")
+    {:ok, _, state} = State.add_player(state, spawn(fn -> nil end), "session-2")
+
+    state = State.remove_player(state, self())
+    updated_state = State.handle_player_timeout(state, "session-1")
+
+    assert updated_state.winner == :black
+    assert Map.has_key?(updated_state.disconnected_players, "session-1") == false
   end
 end

@@ -28,9 +28,11 @@ defmodule NineMensMorrisWeb.LobbyLive do
     if game_id == "" do
       {:noreply, assign(socket, :error, "Please enter a game ID")}
     else
-      case Game.join_game(game_id, password) do
+      session_id = Map.get(socket.assigns, :player_session_id) || generate_session_id()
+
+      case Game.join_game(game_id, password, session_id) do
         {:ok, _pid} ->
-          {:noreply, push_navigate(socket, to: ~p"/game/#{game_id}")}
+          {:noreply, push_navigate(socket, to: ~p"/game/#{game_id}?session_id=#{session_id}")}
 
         {:error, reason} ->
           error_message =

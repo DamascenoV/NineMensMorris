@@ -66,7 +66,7 @@ defmodule NineMensMorris.Game.State do
       players: %{},
       player_sessions: %{},
       disconnected_players: %{},
-      current_player: :black,
+      current_player: nil,
       phase: :placement,
       captures: %{black: 0, white: 0},
       winner: nil,
@@ -83,8 +83,47 @@ defmodule NineMensMorris.Game.State do
   """
   @spec valid_password?(t(), String.t() | nil) :: boolean()
   def valid_password?(state, password) do
-    is_nil(state.password) or state.password == password
+    cond do
+      is_nil(state.password) ->
+        true
+
+      is_nil(password) ->
+        false
+
+      String.length(password) < 3 ->
+        false
+
+      String.length(password) > 50 ->
+        false
+
+      true ->
+        state.password == password
+    end
   end
+
+  @doc """
+  Validates password strength for game creation.
+  """
+  @spec valid_password_for_creation?(String.t() | nil) :: :ok | {:error, String.t()}
+  def valid_password_for_creation?(nil), do: :ok
+
+  def valid_password_for_creation?(password) when is_binary(password) do
+    cond do
+      String.length(password) < 3 ->
+        {:error, "Password must be at least 3 characters long"}
+
+      String.length(password) > 50 ->
+        {:error, "Password must be no more than 50 characters"}
+
+      String.match?(password, ~r/^[a-zA-Z0-9_-]+$/) == false ->
+        {:error, "Password can only contain letters, numbers, underscores, and hyphens"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def valid_password_for_creation?(_), do: {:error, "Invalid password format"}
 
   @doc """
   Updates the game state after a player places a piece.
@@ -223,9 +262,17 @@ defmodule NineMensMorris.Game.State do
 
   defp handle_new_player(state, player_pid, session_id) do
     case map_size(state.players) do
-      0 -> add_player_with_color(state, player_pid, session_id, :black)
-      1 -> add_player_with_color(state, player_pid, session_id, :white)
-      _ -> {:error, :game_full, state}
+      0 ->
+        {:ok, player_color, new_state} =
+          add_player_with_color(state, player_pid, session_id, :white)
+
+        {:ok, player_color, %{new_state | current_player: :white}}
+
+      1 ->
+        add_player_with_color(state, player_pid, session_id, :black)
+
+      _ ->
+        {:error, :game_full, state}
     end
   end
 

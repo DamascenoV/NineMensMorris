@@ -96,4 +96,22 @@ defmodule NineMensMorris.BoardCoordinates do
   def valid_move?(_from_pos, _to_pos, :flying), do: true
   def valid_move?(from_pos, to_pos, :move), do: adjacent_positions?(from_pos, to_pos)
   def valid_move?(_, _, _), do: false
+
+  @doc """
+  Returns coordinates in the format expected by LiveView templates.
+  """
+  @spec coordinates_for_template() :: [{number(), number()}]
+  def coordinates_for_template do
+    @reverse_coordinates
+    |> Map.values()
+    |> Enum.sort_by(fn {x, y} -> {y, x} end)
+  end
+
+  @doc """
+  Validates if a position exists on the board.
+  """
+  @spec valid_position?(atom()) :: boolean()
+  def valid_position?(position) do
+    Map.has_key?(@reverse_coordinates, position)
+  end
 end

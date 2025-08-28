@@ -47,34 +47,45 @@ defmodule NineMensMorris.Game do
 
   @spec create_game(String.t(), String.t()) :: {:ok, pid()} | {:error, atom()}
   def create_game(game_id, password) do
-    case start_or_get(game_id, password) do
-      {:ok, pid} -> {:ok, pid}
-      {:error, {:already_started, _pid}} -> {:error, :game_exists}
-      {:error, reason} -> {:error, reason}
+    case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
+      [{_pid, _}] ->
+        {:error, :game_exists}
+
+      [] ->
+        case State.valid_password_for_creation?(password) do
+          :ok ->
+            case start_or_get(game_id, password) do
+              {:ok, pid} -> {:ok, pid}
+              {:error, reason} -> {:error, reason}
+            end
+
+          {:error, _message} ->
+            {:error, :invalid_password}
+        end
     end
-    |> dbg()
   end
 
   @spec join_game(String.t(), String.t()) :: {:ok, pid()} | {:error, atom()}
   def join_game(game_id, password) do
-    IO.inspect("Game.join_game called with game_id: #{game_id}", label: "GAME_DEBUG")
+    join_game(game_id, password, nil)
+  end
 
+  @spec join_game(String.t(), String.t(), String.t() | nil) :: {:ok, pid()} | {:error, atom()}
+  def join_game(game_id, password, session_id) do
     case Registry.lookup(NineMensMorris.GameRegistry, game_id) do
       [{pid, _}] ->
-        IO.inspect("Game found, attempting to join with password", label: "GAME_DEBUG")
-
-        case GenServer.call(via_tuple(game_id), {:join_with_password, self(), password}) do
-          {:ok, player_color} ->
-            IO.inspect("Successfully joined game as #{player_color}", label: "GAME_DEBUG")
+        case GenServer.call(
+               via_tuple(game_id),
+               {:join_with_password, self(), session_id, password}
+             ) do
+          {:ok, _player_color} ->
             {:ok, pid}
 
           {:error, reason} ->
-            IO.inspect("Failed to join game: #{reason}", label: "GAME_DEBUG")
             {:error, reason}
         end
 
       [] ->
-        IO.inspect("Game not found in registry", label: "GAME_DEBUG")
         {:error, :game_not_found}
     end
   end
@@ -97,6 +108,11 @@ defmodule NineMensMorris.Game do
   @spec get_game_state(String.t()) :: State.t()
   def get_game_state(game_id) do
     GenServer.call(via_tuple(game_id), :get_game_state)
+  end
+
+  @spec player_session_exists?(String.t(), String.t()) :: boolean()
+  def player_session_exists?(game_id, session_id) do
+    GenServer.call(via_tuple(game_id), {:player_session_exists?, session_id})
   end
 
   @spec place_piece(String.t(), atom(), atom()) :: {:ok, Board.t()} | {:error, atom()}
@@ -132,50 +148,30 @@ defmodule NineMensMorris.Game do
 
   @impl true
   def init({game_id, password}) do
-    IO.inspect("=== GAME INIT START ===", label: "GAME_INIT_DEBUG")
-    IO.inspect("Game ID: #{game_id}, Password: #{password}", label: "GAME_INIT_DEBUG")
-
     try do
-      IO.inspect("Creating state...", label: "GAME_INIT_DEBUG")
       state = State.new(game_id, password)
-      IO.inspect("State created successfully", label: "GAME_INIT_DEBUG")
 
-      IO.inspect("Setting up timeout...", label: "GAME_INIT_DEBUG")
       timeout_ref = Process.send_after(self(), :timeout, 30 * 60 * 1000)
       state = %{state | timeout_ref: timeout_ref}
-      IO.inspect("Timeout set up successfully", label: "GAME_INIT_DEBUG")
 
-      IO.inspect("=== GAME INIT COMPLETE ===", label: "GAME_INIT_DEBUG")
       {:ok, state}
     rescue
       error ->
-        IO.inspect("=== GAME INIT ERROR ===", label: "GAME_INIT_DEBUG")
-        IO.inspect(error, label: "GAME_INIT_DEBUG")
         {:stop, error}
     end
   end
 
   @impl true
   def init(game_id) do
-    IO.inspect("=== GAME INIT START (no password) ===", label: "GAME_INIT_DEBUG")
-    IO.inspect("Game ID: #{game_id}", label: "GAME_INIT_DEBUG")
-
     try do
-      IO.inspect("Creating state...", label: "GAME_INIT_DEBUG")
       state = State.new(game_id)
-      IO.inspect("State created successfully", label: "GAME_INIT_DEBUG")
 
-      IO.inspect("Setting up timeout...", label: "GAME_INIT_DEBUG")
       timeout_ref = Process.send_after(self(), :timeout, 30 * 60 * 1000)
       state = %{state | timeout_ref: timeout_ref}
-      IO.inspect("Timeout set up successfully", label: "GAME_INIT_DEBUG")
 
-      IO.inspect("=== GAME INIT COMPLETE ===", label: "GAME_INIT_DEBUG")
       {:ok, state}
     rescue
       error ->
-        IO.inspect("=== GAME INIT ERROR ===", label: "GAME_INIT_DEBUG")
-        IO.inspect(error, label: "GAME_INIT_DEBUG")
         {:stop, error}
     end
   end
@@ -191,20 +187,43 @@ defmodule NineMensMorris.Game do
   end
 
   @impl true
+  def handle_call({:player_session_exists?, session_id}, _from, state) do
+    exists = Map.has_key?(state.player_sessions, session_id)
+    {:reply, exists, state}
+  end
+
+  @impl true
   def handle_call(:awaiting_player?, _from, state) do
-    state = process_pending_downs(state)
+    state =
+      if map_size(state.disconnected_players) > 0 do
+        process_pending_downs(state)
+      else
+        state
+      end
+
     {:reply, map_size(state.players) < 2, state}
   end
 
   @impl true
   def handle_call(:game_full?, _from, state) do
-    state = process_pending_downs(state)
+    state =
+      if map_size(state.disconnected_players) > 0 do
+        process_pending_downs(state)
+      else
+        state
+      end
+
     {:reply, map_size(state.players) >= 2, state}
   end
 
   @impl true
   def handle_call({:join, player_pid, session_id}, _from, state) do
-    state = process_pending_downs(state)
+    state =
+      if map_size(state.disconnected_players) > 0 and map_size(state.players) < 2 do
+        process_pending_downs(state)
+      else
+        state
+      end
 
     case State.add_player(state, player_pid, session_id) do
       {:ok, player_color, new_state} ->
@@ -221,7 +240,12 @@ defmodule NineMensMorris.Game do
 
   @impl true
   def handle_call({:join, player_pid}, _from, state) do
-    state = process_pending_downs(state)
+    state =
+      if map_size(state.disconnected_players) > 0 and map_size(state.players) < 2 do
+        process_pending_downs(state)
+      else
+        state
+      end
 
     case State.add_player(state, player_pid, nil) do
       {:ok, player_color, new_state} ->
@@ -238,16 +262,11 @@ defmodule NineMensMorris.Game do
 
   @impl true
   def handle_call({:join_with_password, player_pid, password}, _from, state) do
-    IO.inspect("handle_call join_with_password called", label: "GAME_DEBUG")
     state = process_pending_downs(state)
 
     if State.valid_password?(state, password) do
-      IO.inspect("Password valid, adding player", label: "GAME_DEBUG")
-
       case State.add_player(state, player_pid, nil) do
         {:ok, player_color, new_state} ->
-          IO.inspect("Player added successfully as #{player_color}", label: "GAME_DEBUG")
-
           if map_size(state.players) == 1 do
             broadcast(state.game_id, {:player_joined, player_pid})
           end
@@ -255,11 +274,9 @@ defmodule NineMensMorris.Game do
           {:reply, {:ok, player_color}, new_state}
 
         {:error, reason, new_state} ->
-          IO.inspect("Failed to add player: #{reason}", label: "GAME_DEBUG")
           {:reply, {:error, reason}, new_state}
       end
     else
-      IO.inspect("Invalid password", label: "GAME_DEBUG")
       {:reply, {:error, :invalid_password}, state}
     end
   end
@@ -347,17 +364,7 @@ defmodule NineMensMorris.Game do
   end
 
   @impl true
-  def terminate(reason, state) do
-    IO.inspect("=== GAME TERMINATING ===", label: "GAME_DEBUG")
-    IO.inspect("Game ID: #{state.game_id}", label: "GAME_DEBUG")
-    IO.inspect("Reason: #{inspect(reason)}", label: "GAME_DEBUG")
-    IO.inspect("State: #{inspect(state, limit: :infinity)}", label: "GAME_DEBUG")
-    IO.inspect("=== GAME TERMINATED ===", label: "GAME_DEBUG")
-  end
-
-  @impl true
   def handle_info(:timeout, state) do
-    IO.inspect("Game timeout reached for game: #{state.game_id}", label: "GAME_DEBUG")
     broadcast(state.game_id, {:game_ended, :timeout})
     {:stop, :normal, state}
   end
