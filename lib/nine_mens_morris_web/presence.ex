@@ -15,7 +15,8 @@ defmodule NineMensMorrisWeb.Presence do
     track(player_pid, "game:#{game_id}", player_color, %{
       cursor_x: cursor_x,
       cursor_y: cursor_y,
-      online_at: inspect(System.system_time(:second))
+      online_at: inspect(System.system_time(:second)),
+      last_active: inspect(System.system_time(:second))
     })
   end
 
@@ -26,7 +27,8 @@ defmodule NineMensMorrisWeb.Presence do
     update(player_pid, "game:#{game_id}", player_color, %{
       cursor_x: cursor_x,
       cursor_y: cursor_y,
-      online_at: inspect(System.system_time(:second))
+      online_at: inspect(System.system_time(:second)),
+      last_active: inspect(System.system_time(:second))
     })
   end
 

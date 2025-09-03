@@ -28,7 +28,13 @@ let Hooks = {}
 
 Hooks.CursorTracker = {
   mounted() {
+    this.lastUpdate = 0
+    this.throttleMs = 50 // Throttle updates to 20fps
+
     this.handleMouseMove = (event) => {
+      const now = Date.now()
+      if (now - this.lastUpdate < this.throttleMs) return
+
       const board = event.currentTarget
       const rect = board.getBoundingClientRect()
 
@@ -40,6 +46,7 @@ Hooks.CursorTracker = {
         const svgY = (y / rect.height) * 300
 
         this.pushEvent("cursor_move", {x: svgX, y: svgY})
+        this.lastUpdate = now
       }
     }
 

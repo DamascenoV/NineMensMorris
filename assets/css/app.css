@@ -227,6 +227,39 @@ body {
     cursor: text;
 }
 
+/* Cursor improvements */
+.opponent-cursor-group {
+    transition: all 0.3s ease-out;
+}
+
+.opponent-cursor {
+    transition: all 0.3s ease-out;
+    animation: cursor-glow 3s infinite;
+}
+
+.opponent-cursor:hover {
+    transform: scale(1.2);
+}
+
+.cursor-label-bg {
+    transition: all 0.3s ease-out;
+}
+
+.opponent-cursor-label {
+    transition: all 0.3s ease-out;
+    pointer-events: none;
+    user-select: none;
+}
+
+@keyframes cursor-glow {
+    0%, 100% {
+        filter: drop-shadow(0 0 6px rgba(0,0,0,0.4));
+    }
+    50% {
+        filter: drop-shadow(0 0 10px rgba(0,0,0,0.6));
+    }
+}
+
 /* Lobby styles */
 .lobby-container {
     @apply min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4;

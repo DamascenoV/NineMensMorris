@@ -371,11 +371,22 @@ defmodule NineMensMorrisWeb.GameLive do
     try do
       presence_list = NineMensMorrisWeb.Presence.list_game(socket.assigns.game_id)
 
+      current_time = System.system_time(:second)
+
       opponent_cursors =
         presence_list
         |> Enum.filter(fn {player, _} -> player != socket.assigns.player end)
         |> Enum.map(fn {player, %{metas: [meta | _]}} ->
-          {player, %{x: meta.cursor_x, y: meta.cursor_y}}
+          last_active = String.to_integer(meta.last_active || meta.online_at)
+          is_active = current_time - last_active < 30
+
+          {player,
+           %{
+             x: meta.cursor_x,
+             y: meta.cursor_y,
+             last_active: last_active,
+             is_active: is_active
+           }}
         end)
         |> Map.new()
 
