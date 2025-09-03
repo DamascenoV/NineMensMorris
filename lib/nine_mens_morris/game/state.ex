@@ -160,12 +160,13 @@ defmodule NineMensMorris.Game.State do
   @doc """
   Updates the game state after a player removes a piece.
   """
-  @spec update_after_remove(t(), Board.t(), atom(), map()) :: t()
-  def update_after_remove(state, new_board, player, captures) do
+  @spec update_after_remove(t(), Board.t(), atom(), map(), atom()) :: t()
+  def update_after_remove(state, new_board, player, captures, new_phase) do
     %{
       state
       | board: new_board,
         current_player: next_player(player),
+        phase: new_phase,
         captures: captures,
         last_activity: System.monotonic_time(:second)
     }

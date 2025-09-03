@@ -52,16 +52,17 @@ defmodule NineMensMorris.Game do
         {:error, :game_exists}
 
       [] ->
-        case State.valid_password_for_creation?(password) do
-          :ok ->
-            case start_or_get(game_id, password) do
-              {:ok, pid} -> {:ok, pid}
-              {:error, reason} -> {:error, reason}
-            end
+        create_game_inner(game_id, password)
+    end
+  end
 
-          {:error, _message} ->
-            {:error, :invalid_password}
-        end
+  defp create_game_inner(game_id, password) do
+    case State.valid_password_for_creation?(password) do
+      :ok ->
+        start_or_get(game_id, password)
+
+      {:error, _message} ->
+        {:error, :invalid_password}
     end
   end
 
@@ -265,17 +266,7 @@ defmodule NineMensMorris.Game do
     state = process_pending_downs(state)
 
     if State.valid_password?(state, password) do
-      case State.add_player(state, player_pid, nil) do
-        {:ok, player_color, new_state} ->
-          if map_size(state.players) == 1 do
-            broadcast(state.game_id, {:player_joined, player_pid})
-          end
-
-          {:reply, {:ok, player_color}, new_state}
-
-        {:error, reason, new_state} ->
-          {:reply, {:error, reason}, new_state}
-      end
+      add_player_reply(state, player_pid, nil)
     else
       {:reply, {:error, :invalid_password}, state}
     end
@@ -286,17 +277,7 @@ defmodule NineMensMorris.Game do
     state = process_pending_downs(state)
 
     if State.valid_password?(state, password) do
-      case State.add_player(state, player_pid, session_id) do
-        {:ok, player_color, new_state} ->
-          if map_size(state.players) == 1 do
-            broadcast(state.game_id, {:player_joined, player_pid})
-          end
-
-          {:reply, {:ok, player_color}, new_state}
-
-        {:error, reason, new_state} ->
-          {:reply, {:error, reason}, new_state}
-      end
+      add_player_reply(state, player_pid, session_id)
     else
       {:reply, {:error, :invalid_password}, state}
     end
@@ -391,6 +372,20 @@ defmodule NineMensMorris.Game do
 
   defp broadcast(game_id, message) do
     Phoenix.PubSub.broadcast(NineMensMorris.PubSub, "game:#{game_id}", message)
+  end
+
+  defp add_player_reply(state, player_pid, session_id) do
+    case State.add_player(state, player_pid, session_id) do
+      {:ok, player_color, new_state} ->
+        if map_size(state.players) == 1 do
+          broadcast(state.game_id, {:player_joined, player_pid})
+        end
+
+        {:reply, {:ok, player_color}, new_state}
+
+      {:error, reason, new_state} ->
+        {:reply, {:error, reason}, new_state}
+    end
   end
 
   defp process_pending_downs(state) do

@@ -45,18 +45,19 @@ defmodule NineMensMorris.Game.StateTest do
     assert updated_state_mill.current_player == :black
   end
 
-  test "update_after_remove/4 updates the state after removing a piece" do
+  test "update_after_remove/5 updates the state after removing a piece" do
     state = State.new("game-1")
     board = Board.new()
     {:ok, board} = Board.place_piece(board, :a1, :white)
     {:ok, new_board} = Board.remove_piece(board, :a1, :black)
 
     captures = %{black: 1, white: 0}
-    updated_state = State.update_after_remove(state, new_board, :black, captures)
+    updated_state = State.update_after_remove(state, new_board, :black, captures, :move)
 
     assert updated_state.board == new_board
     assert updated_state.current_player == :white
     assert updated_state.captures == captures
+    assert updated_state.phase == :move
   end
 
   test "check_winner/2 detects a winner when opponent has less than 3 pieces" do

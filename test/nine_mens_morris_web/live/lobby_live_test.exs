@@ -154,7 +154,7 @@ defmodule NineMensMorrisWeb.LobbyLiveTest do
     end
 
     test "handle_params with error shows error message", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/lobby?error=Test+Error")
+      {:ok, view, _html} = live(conn, "/lobby?error=Test Error")
 
       assert has_element?(view, ".error-message", "Test Error")
     end

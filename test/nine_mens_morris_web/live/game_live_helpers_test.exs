@@ -98,7 +98,7 @@ defmodule NineMensMorrisWeb.GameLiveHelpersTest do
     test "returns valid base64 string" do
       session_id = GameLiveHelpers.generate_session_id()
 
-      assert {:ok, _} = Base.decode64(session_id)
+      assert {:ok, _} = Base.url_decode64(session_id)
     end
   end
 end

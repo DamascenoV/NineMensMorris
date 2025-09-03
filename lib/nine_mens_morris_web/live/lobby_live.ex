@@ -28,23 +28,7 @@ defmodule NineMensMorrisWeb.LobbyLive do
     if game_id == "" do
       {:noreply, assign(socket, :error, "Please enter a game ID")}
     else
-      session_id = Map.get(socket.assigns, :player_session_id) || generate_session_id()
-
-      case Game.join_game(game_id, password, session_id) do
-        {:ok, _pid} ->
-          {:noreply, push_navigate(socket, to: ~p"/game/#{game_id}?session_id=#{session_id}")}
-
-        {:error, reason} ->
-          error_message =
-            case reason do
-              :game_not_found -> "Game not found"
-              :invalid_password -> "Incorrect password"
-              :game_full -> "Game is full"
-              _ -> "Failed to join game: #{inspect(reason)}"
-            end
-
-          {:noreply, assign(socket, :error, error_message)}
-      end
+      join_game(socket, game_id, password)
     end
   end
 
@@ -57,27 +41,10 @@ defmodule NineMensMorrisWeb.LobbyLive do
     password = String.trim(password)
     is_private = is_private == "true"
 
-    cond do
-      is_private && password == "" ->
-        {:noreply, assign(socket, :error, "Private games require a password")}
-
-      true ->
-        game_password = if is_private, do: password, else: nil
-
-        game_id = generate_unique_game_id()
-
-        case Game.create_game(game_id, game_password) do
-          {:ok, _pid} ->
-            {:noreply, push_navigate(socket, to: ~p"/game/#{game_id}")}
-
-          {:error, :game_exists} ->
-            {:noreply, assign(socket, :error, "Failed to create game, please try again")}
-            {:noreply, assign(socket, :error, "Game ID already exists")}
-
-          {:error, reason} ->
-            IO.inspect(reason)
-            {:noreply, assign(socket, :error, "Failed to create game: #{inspect(reason)}")}
-        end
+    if is_private && password == "" do
+      {:noreply, assign(socket, :error, "Private games require a password")}
+    else
+      create_game(socket, is_private, password)
     end
   end
 
@@ -103,12 +70,54 @@ defmodule NineMensMorrisWeb.LobbyLive do
   end
 
   @impl true
-  def handle_params(%{"error" => error}, _url, socket) do
-    {:noreply, assign(socket, :error, error)}
+  def handle_params(_params, url, socket) do
+    uri = URI.parse(url)
+    query = URI.decode_query(uri.query || "")
+    error = query["error"]
+
+    if error do
+      {:noreply, assign(socket, :error, error)}
+    else
+      {:noreply, socket}
+    end
   end
 
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
+  defp join_game(socket, game_id, password) do
+    session_id = socket.assigns.player_session_id || generate_session_id()
+
+    case Game.join_game(game_id, password, session_id) do
+      {:ok, _pid} ->
+        {:noreply, push_navigate(socket, to: ~p"/game/#{game_id}?session_id=#{session_id}")}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, :error, map_join_error(reason))}
+    end
+  end
+
+  defp map_join_error(reason) do
+    case reason do
+      :game_not_found -> "Game not found"
+      :invalid_password -> "Incorrect password"
+      :game_full -> "Game is full"
+      _ -> "Failed to join game: #{inspect(reason)}"
+    end
+  end
+
+  defp create_game(socket, is_private, password) do
+    game_password = if is_private, do: password, else: nil
+
+    game_id = generate_unique_game_id()
+
+    case Game.create_game(game_id, game_password) do
+      {:ok, _pid} ->
+        {:noreply, push_navigate(socket, to: ~p"/game/#{game_id}")}
+
+      {:error, :game_exists} ->
+        {:noreply, assign(socket, :error, "Game ID already exists")}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, :error, "Failed to create game: #{inspect(reason)}")}
+    end
   end
 
   defp generate_session_id do
