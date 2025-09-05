@@ -39,7 +39,6 @@ defmodule NineMensMorris.Game.Actions do
         coordinates = BoardCoordinates.get_coordinates(position)
         next_player = State.next_player(player)
         new_phase = Logic.update_game_phase(new_board, next_player, state.phase)
-        dbg(new_phase)
 
         {updated_mills, new_formed_mills, _} =
           Logic.update_mills(state, new_board, player, nil, position)
@@ -95,7 +94,6 @@ defmodule NineMensMorris.Game.Actions do
 
         formed_new_mill = new_formed_mills != []
         new_phase = Logic.update_game_phase(new_board, State.next_player(player), state.phase)
-        dbg(new_phase)
 
         new_state =
           State.update_after_move(
@@ -155,15 +153,14 @@ defmodule NineMensMorris.Game.Actions do
     end
   end
 
-  defp remove_piece_success(state, position, player, _opponent) do
+  defp remove_piece_success(state, position, player, opponent) do
     case Board.remove_piece(state.board, position, player) do
       {:ok, new_board} ->
         coordinates = BoardCoordinates.get_coordinates(position)
         captures = Map.update!(state.captures, player, &(&1 + 1))
 
         next_player = State.next_player(player)
-        new_phase = Logic.update_game_phase(new_board, next_player, state.phase)
-        dbg(new_phase)
+        new_phase = Logic.update_game_phase(new_board, opponent, state.phase)
 
         new_state = State.update_after_remove(state, new_board, player, captures, new_phase)
         {new_state, win_reason} = State.check_winner(new_state, player)

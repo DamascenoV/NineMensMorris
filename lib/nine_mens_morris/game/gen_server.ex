@@ -16,6 +16,8 @@ defmodule NineMensMorris.Game do
   alias NineMensMorris.Game.Actions
   alias NineMensMorris.Board
 
+  @game_timout_ms 30 * 60 * 1000
+
   @spec start_link(String.t() | {String.t(), String.t() | nil}) :: {:ok, pid()} | {:error, any()}
   def start_link(game_id) when is_binary(game_id) do
     GenServer.start_link(__MODULE__, game_id, name: via_tuple(game_id))
@@ -152,7 +154,7 @@ defmodule NineMensMorris.Game do
     try do
       state = State.new(game_id, password)
 
-      timeout_ref = Process.send_after(self(), :timeout, 30 * 60 * 1000)
+      timeout_ref = Process.send_after(self(), :timeout, @game_timout_ms)
       state = %{state | timeout_ref: timeout_ref}
 
       {:ok, state}
@@ -167,7 +169,7 @@ defmodule NineMensMorris.Game do
     try do
       state = State.new(game_id)
 
-      timeout_ref = Process.send_after(self(), :timeout, 30 * 60 * 1000)
+      timeout_ref = Process.send_after(self(), :timeout, @game_timout_ms)
       state = %{state | timeout_ref: timeout_ref}
 
       {:ok, state}

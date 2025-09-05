@@ -153,9 +153,6 @@ defmodule NineMensMorrisWeb.GameLive do
          true <- current_player == socket.assigns.player do
       case Game.place_piece(socket.assigns.game_id, position, current_player) do
         {:ok, _new_board} ->
-          game_state = Game.get_game_state(socket.assigns.game_id)
-          updates = GameLiveHelpers.build_socket_updates(game_state)
-          socket = assign(socket, updates)
           {:noreply, socket}
 
         {:error, reason} ->
@@ -172,12 +169,12 @@ defmodule NineMensMorrisWeb.GameLive do
   def handle_event("remove_piece", %{"position" => position_str}, socket) do
     with {:ok, position} <- GameLiveHelpers.validate_position(position_str),
          true <-
-           socket.assigns.can_capture && socket.assigns.current_player == socket.assigns.player do
+           socket.assigns.can_capture &&
+             socket.assigns.current_player == socket.assigns.player &&
+             socket.assigns.mill_forming_player == socket.assigns.player do
       case Game.remove_piece(socket.assigns.game_id, position, socket.assigns.mill_forming_player) do
         {:ok, _new_board} ->
-          game_state = Game.get_game_state(socket.assigns.game_id)
-          updates = GameLiveHelpers.build_socket_updates(game_state, can_capture: false)
-          socket = assign(socket, updates)
+          socket = assign(socket, :can_capture, false)
           {:noreply, socket}
 
         {:error, reason} ->
@@ -211,9 +208,7 @@ defmodule NineMensMorrisWeb.GameLive do
          true <- from_pos && current_player == socket.assigns.player do
       case Game.move_piece(socket.assigns.game_id, from_pos, to_pos, current_player) do
         {:ok, _new_board} ->
-          game_state = Game.get_game_state(socket.assigns.game_id)
-          updates = GameLiveHelpers.build_socket_updates(game_state, reset_selection: true)
-          socket = assign(socket, updates)
+          socket = assign(socket, :selected_piece, nil)
           {:noreply, socket}
 
         {:error, reason} ->
