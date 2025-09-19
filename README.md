@@ -1,5 +1,7 @@
 # Nine Men's Morris
 
+![Game Screenshot](assets/game.png)
+
 A web-based implementation of the classic Nine Men's Morris board game, built with Elixir and Phoenix Framework. This project serves as a learning exercise to explore Elixir's functional programming paradigm and Phoenix's real-time capabilities.
 
 ## About This Project
