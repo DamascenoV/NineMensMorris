@@ -6,34 +6,9 @@ defmodule NineMensMorrisWeb.GameLiveHelpers do
   alias NineMensMorris.BoardCoordinates
   alias NineMensMorris.Game.Errors
 
-  @valid_positions [
-    :a1,
-    :d1,
-    :g1,
-    :b2,
-    :d2,
-    :f2,
-    :c3,
-    :d3,
-    :e3,
-    :a4,
-    :b4,
-    :c4,
-    :e4,
-    :f4,
-    :g4,
-    :c5,
-    :d5,
-    :e5,
-    :b6,
-    :d6,
-    :f6,
-    :a7,
-    :d7,
-    :g7
-  ]
-
-  @position_strings Map.new(@valid_positions, fn pos -> {Atom.to_string(pos), pos} end)
+  @position_strings Map.new(BoardCoordinates.all_positions(), fn pos ->
+                      {Atom.to_string(pos), pos}
+                    end)
 
   @doc """
   Validates a position string and returns the atom if valid.
@@ -66,13 +41,6 @@ defmodule NineMensMorrisWeb.GameLiveHelpers do
   @spec player_color(atom()) :: String.t()
   def player_color(player) when player in [:white, "white"], do: "white"
   def player_color(player) when player in [:black, "black"], do: "black"
-
-  @doc """
-  Returns the next player's turn.
-  """
-  @spec next_player(atom()) :: atom()
-  def next_player(:white), do: :black
-  def next_player(:black), do: :white
 
   @doc """
   Generates a cryptographically secure session ID.

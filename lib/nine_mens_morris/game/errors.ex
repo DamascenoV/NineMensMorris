@@ -14,6 +14,8 @@ defmodule NineMensMorris.Game.Errors do
           | :invalid_move
           | :game_ended
           | :invalid_piece_removal
+          | :no_pieces_available
+          | :piece_in_mill
           | :game_full
           | :invalid_password
           | :game_not_found
@@ -33,6 +35,8 @@ defmodule NineMensMorris.Game.Errors do
   def to_message(:invalid_move), do: "Invalid move"
   def to_message(:game_ended), do: "The game has ended"
   def to_message(:invalid_piece_removal), do: "Cannot remove that piece"
+  def to_message(:no_pieces_available), do: "No more pieces available to place"
+  def to_message(:piece_in_mill), do: "Cannot remove a piece that is in a mill"
   def to_message(:game_full), do: "Game is already full"
   def to_message(:invalid_password), do: "Invalid password"
   def to_message(:game_not_found), do: "Game not found"

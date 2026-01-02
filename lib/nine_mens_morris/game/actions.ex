@@ -58,16 +58,7 @@ defmodule NineMensMorris.Game.Actions do
         {:ok, new_state, result}
 
       {:error, reason} ->
-        game_error = map_place_error(reason)
-        Errors.with_state(game_error, state)
-    end
-  end
-
-  defp map_place_error(reason) do
-    case reason do
-      "No more pieces available" -> :invalid_move
-      "Cannot remove piece" -> :invalid_piece_removal
-      _ -> :invalid_move
+        Errors.with_state(reason, state)
     end
   end
 
@@ -124,17 +115,7 @@ defmodule NineMensMorris.Game.Actions do
         {:ok, new_state, result, win_reason}
 
       {:error, reason} ->
-        game_error = map_move_error(reason)
-        Errors.with_state(game_error, state)
-    end
-  end
-
-  defp map_move_error(reason) do
-    case reason do
-      :invalid_piece -> :invalid_piece
-      :position_occupied -> :position_occupied
-      :invalid_move -> :invalid_move
-      _ -> :invalid_move
+        Errors.with_state(reason, state)
     end
   end
 
@@ -177,16 +158,7 @@ defmodule NineMensMorris.Game.Actions do
         {:ok, new_state, result, win_reason}
 
       {:error, reason} ->
-        game_error = map_remove_error(reason)
-        Errors.with_state(game_error, state)
-    end
-  end
-
-  defp map_remove_error(reason) do
-    case reason do
-      "Cannot remove piece in a mill" -> :invalid_piece_removal
-      "Cannot remove piece" -> :invalid_piece_removal
-      _ -> :invalid_move
+        Errors.with_state(reason, state)
     end
   end
 end

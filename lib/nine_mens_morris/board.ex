@@ -36,8 +36,8 @@ defmodule NineMensMorris.Board do
     }
   end
 
-  @spec place_piece(t(), t_position(), t_player()) :: {:ok, t()} | {:error, String.t()}
-  def place_piece(board, position, player) do
+  @spec place_piece(t(), t_position(), t_player()) :: {:ok, t()} | {:error, atom()}
+  def place_piece(%__MODULE__{} = board, position, player) do
     if board.pieces[player] > 0 do
       {:ok,
        %__MODULE__{
@@ -46,7 +46,7 @@ defmodule NineMensMorris.Board do
            pieces: Map.update!(board.pieces, player, &(&1 - 1))
        }}
     else
-      {:error, "No more pieces available"}
+      {:error, :no_pieces_available}
     end
   end
 
@@ -57,7 +57,7 @@ defmodule NineMensMorris.Board do
     end)
   end
 
-  @spec remove_piece(t(), t_position(), t_player()) :: {:ok, t()} | {:error, String.t()}
+  @spec remove_piece(t(), t_position(), t_player()) :: {:ok, t()} | {:error, atom()}
   def remove_piece(board, position, player) do
     opponent = if player == :white, do: :black, else: :white
 
@@ -66,11 +66,11 @@ defmodule NineMensMorris.Board do
         if can_remove_piece?(board, position, opponent) do
           {:ok, %{board | positions: Map.put(board.positions, position, nil)}}
         else
-          {:error, "Cannot remove piece in a mill"}
+          {:error, :piece_in_mill}
         end
 
       _ ->
-        {:error, "Cannot remove piece"}
+        {:error, :invalid_piece_removal}
     end
   end
 
@@ -157,7 +157,7 @@ defmodule NineMensMorris.Board do
 
   @spec move_piece(t(), t_position(), t_position(), t_player(), atom()) ::
           {:ok, t()} | {:error, atom()}
-  def move_piece(board, from_pos, to_pos, player, phase) do
+  def move_piece(%__MODULE__{} = board, from_pos, to_pos, player, phase) do
     cond do
       board.positions[from_pos] != player ->
         {:error, :invalid_piece}
@@ -174,7 +174,7 @@ defmodule NineMensMorris.Board do
           |> Map.put(from_pos, nil)
           |> Map.put(to_pos, player)
 
-        {:ok, %__MODULE__{board | positions: new_positions}}
+        {:ok, %{board | positions: new_positions}}
     end
   end
 end

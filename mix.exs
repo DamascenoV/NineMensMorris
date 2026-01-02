@@ -57,6 +57,12 @@ defmodule NineMensMorris.MixProject do
     ]
   end
 
+  def cli do
+    [
+      preferred_envs: [precommit: :test]
+    ]
+  end
+
   # Aliases are shortcuts or tasks specific to the current project.
   # For example, to install project dependencies and perform other setup tasks, run:
   #
@@ -73,7 +79,13 @@ defmodule NineMensMorris.MixProject do
         "esbuild nine_mens_morris --minify",
         "phx.digest"
       ],
-      precommit: ["compile", "credo", "test"]
+      precommit: [
+        "compile --warning-as-errors",
+        "deps.unlock --unused",
+        "format",
+        "credo",
+        "test"
+      ]
     ]
   end
 end

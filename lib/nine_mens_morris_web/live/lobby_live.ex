@@ -2,6 +2,7 @@ defmodule NineMensMorrisWeb.LobbyLive do
   use NineMensMorrisWeb, :live_view
 
   alias NineMensMorris.Game
+  alias NineMensMorrisWeb.GameLiveHelpers
 
   @impl true
   def mount(_params, session, socket) do
@@ -15,7 +16,7 @@ defmodule NineMensMorrisWeb.LobbyLive do
       |> assign(:error, nil)
       |> assign(
         :player_session_id,
-        Map.get(session, "player_session_id") || generate_session_id()
+        Map.get(session, "player_session_id") || GameLiveHelpers.generate_session_id()
       )
 
     {:ok, socket}
@@ -83,7 +84,7 @@ defmodule NineMensMorrisWeb.LobbyLive do
   end
 
   defp join_game(socket, game_id, password) do
-    session_id = socket.assigns.player_session_id || generate_session_id()
+    session_id = socket.assigns.player_session_id || GameLiveHelpers.generate_session_id()
 
     case Game.join_game(game_id, password, session_id) do
       {:ok, _pid} ->
@@ -118,10 +119,6 @@ defmodule NineMensMorrisWeb.LobbyLive do
       {:error, reason} ->
         {:noreply, assign(socket, :error, "Failed to create game: #{inspect(reason)}")}
     end
-  end
-
-  defp generate_session_id do
-    :crypto.strong_rand_bytes(16) |> Base.encode64()
   end
 
   defp generate_unique_game_id do

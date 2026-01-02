@@ -72,16 +72,6 @@ defmodule NineMensMorrisWeb.GameLiveHelpersTest do
     end
   end
 
-  describe "next_player/1" do
-    test "returns black after white" do
-      assert GameLiveHelpers.next_player(:white) == :black
-    end
-
-    test "returns white after black" do
-      assert GameLiveHelpers.next_player(:black) == :white
-    end
-  end
-
   describe "generate_session_id/0" do
     test "returns a string" do
       session_id = GameLiveHelpers.generate_session_id()

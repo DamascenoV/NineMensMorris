@@ -3,6 +3,7 @@ defmodule NineMensMorrisWeb.GameLive do
   alias NineMensMorris.Game
   alias NineMensMorris.BoardCoordinates
   alias NineMensMorrisWeb.GameLiveHelpers
+  alias NineMensMorrisWeb.GameLive.MessageHandlers
 
   @impl true
   def mount(%{"game_id" => game_id} = params, session, socket) do
@@ -223,142 +224,47 @@ defmodule NineMensMorrisWeb.GameLive do
   end
 
   @impl true
-  def handle_info({:player_joined, _player}, socket) do
-    socket =
-      socket
-      |> assign(:awaiting_player, false)
-      |> assign(:current_player, Game.current_player(socket.assigns.game_id))
-
-    {:noreply, socket |> put_flash(:info, "Player Join")}
+  def handle_info({:player_joined, player_pid}, socket) do
+    socket = MessageHandlers.handle_player_joined(socket, player_pid)
+    {:noreply, put_flash(socket, :info, "Player joined")}
   end
 
   @impl true
-  def handle_info(
-        {:piece_placed,
-         %{
-           position: position,
-           player: player,
-           current_player: current_player,
-           phase: phase,
-           coordinates: coordinates
-         }},
-        socket
-      ) do
-    socket =
-      socket
-      |> assign(
-        board: %{
-          socket.assigns.board
-          | positions: Map.put(socket.assigns.board.positions, position, player)
-        }
-      )
-      |> assign(:current_player, current_player)
-      |> assign(:phase, phase)
-      |> update(:placed_pieces, fn pieces ->
-        Map.put(pieces, coordinates, player)
-      end)
-
-    {:noreply, socket}
+  def handle_info({:piece_placed, payload}, socket) do
+    {:noreply, MessageHandlers.handle_piece_placed(socket, payload)}
   end
 
   @impl true
-  def handle_info(
-        {:piece_moved,
-         %{
-           from: from_pos,
-           to: to_pos,
-           player: player,
-           coordinates_from: coordinates_from,
-           coordinates_to: coordinates_to,
-           phase: phase
-         }},
-        socket
-      ) do
-    socket =
-      socket
-      |> assign(
-        board: %{
-          socket.assigns.board
-          | positions:
-              socket.assigns.board.positions
-              |> Map.put(from_pos, nil)
-              |> Map.put(to_pos, player)
-        }
-      )
-      |> assign(:current_player, next_player(player))
-      |> assign(:phase, phase)
-      |> update(:placed_pieces, fn pieces ->
-        pieces
-        |> Map.delete(coordinates_from)
-        |> Map.put(coordinates_to, player)
-      end)
-      |> assign(:selected_piece, nil)
-
-    {:noreply, socket}
+  def handle_info({:piece_moved, payload}, socket) do
+    {:noreply, MessageHandlers.handle_piece_moved(socket, payload)}
   end
 
   @impl true
   def handle_info({:mill_formed, player, mills}, socket) do
-    socket =
-      socket
-      |> assign(:can_capture, true)
-      |> assign(:mill_forming_player, player)
-      |> assign(:formed_mills, mills)
-      |> assign(:current_player, next_player(socket.assigns.current_player))
-
-    {:noreply, socket}
+    {:noreply, MessageHandlers.handle_mill_formed(socket, player, mills)}
   end
 
   @impl true
-  def handle_info(
-        {:piece_removed,
-         %{
-           position: position,
-           player: _player,
-           current_player: current_player,
-           coordinates: coordinates,
-           captures: captures
-         }},
-        socket
-      ) do
-    socket =
-      socket
-      |> assign(
-        board: %{
-          socket.assigns.board
-          | positions: Map.delete(socket.assigns.board.positions, position)
-        }
-      )
-      |> assign(:current_player, current_player)
-      |> assign(:can_capture, false)
-      |> assign(:captures, captures)
-      |> update(:placed_pieces, fn pieces ->
-        Map.delete(pieces, coordinates)
-      end)
-
-    {:noreply, socket}
+  def handle_info({:piece_removed, payload}, socket) do
+    {:noreply, MessageHandlers.handle_piece_removed(socket, payload)}
   end
 
   @impl true
-  def handle_info({:player_left, _pid}, socket) do
-    {:noreply, socket |> put_flash(:error, "Opponent Left the Game")}
+  def handle_info({:player_left, pid}, socket) do
+    _socket = MessageHandlers.handle_player_left(socket, pid)
+    {:noreply, put_flash(socket, :error, "Opponent left the game")}
   end
 
   @impl true
-  def handle_info({:game_ended, :victory, player, by}, socket) do
-    message =
-      case by do
-        :opponent_disconnected -> "Opponent didn't return within 3 minutes. You win!"
-        _ -> "Game Ended by #{by}"
-      end
-
-    {:noreply, socket |> assign(:winner, player) |> put_flash(:info, message)}
+  def handle_info({:game_ended, :victory, player, reason}, socket) do
+    {socket, message} = MessageHandlers.handle_game_ended_victory(socket, player, reason)
+    {:noreply, put_flash(socket, :info, message)}
   end
 
   @impl true
   def handle_info({:game_ended, :player_left}, socket) do
-    {:noreply,
-     socket |> assign(:winner, :game_abandoned) |> put_flash(:error, "Game ended - opponent left")}
+    socket = MessageHandlers.handle_game_ended_player_left(socket)
+    {:noreply, put_flash(socket, :error, "Game ended - opponent left")}
   end
 
   @impl true
@@ -416,12 +322,6 @@ defmodule NineMensMorrisWeb.GameLive do
       {:noreply, socket}
     end
   end
-
-  defp next_player(:white), do: :black
-  defp next_player(:black), do: :white
-
-  defp player_color(player) when player in [:white, "white"], do: "white"
-  defp player_color(player) when player in [:black, "black"], do: "black"
 
   defp game_has_password?(game_state) do
     !is_nil(game_state.password) && game_state.password != ""

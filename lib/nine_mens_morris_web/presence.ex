@@ -12,11 +12,13 @@ defmodule NineMensMorrisWeb.Presence do
   Track a player's presence in a game with cursor position.
   """
   def track_cursor(game_id, player_pid, player_color, cursor_x, cursor_y) do
+    now = System.system_time(:second)
+
     track(player_pid, "game:#{game_id}", player_color, %{
       cursor_x: cursor_x,
       cursor_y: cursor_y,
-      online_at: inspect(System.system_time(:second)),
-      last_active: inspect(System.system_time(:second))
+      online_at: now,
+      last_active: now
     })
   end
 
@@ -24,11 +26,13 @@ defmodule NineMensMorrisWeb.Presence do
   Update a player's cursor position.
   """
   def update_cursor(game_id, player_pid, player_color, cursor_x, cursor_y) do
+    now = System.system_time(:second)
+
     update(player_pid, "game:#{game_id}", player_color, %{
       cursor_x: cursor_x,
       cursor_y: cursor_y,
-      online_at: inspect(System.system_time(:second)),
-      last_active: inspect(System.system_time(:second))
+      online_at: now,
+      last_active: now
     })
   end
 

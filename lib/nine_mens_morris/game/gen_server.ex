@@ -14,9 +14,8 @@ defmodule NineMensMorris.Game do
 
   alias NineMensMorris.Game.State
   alias NineMensMorris.Game.Actions
+  alias NineMensMorris.Game.Config
   alias NineMensMorris.Board
-
-  @game_timout_ms 30 * 60 * 1000
 
   @spec start_link(String.t() | {String.t(), String.t() | nil}) :: {:ok, pid()} | {:error, any()}
   def start_link(game_id) when is_binary(game_id) do
@@ -154,7 +153,7 @@ defmodule NineMensMorris.Game do
     try do
       state = State.new(game_id, password)
 
-      timeout_ref = Process.send_after(self(), :timeout, @game_timout_ms)
+      timeout_ref = Process.send_after(self(), :timeout, Config.game_timeout_ms())
       state = %{state | timeout_ref: timeout_ref}
 
       {:ok, state}
@@ -169,7 +168,7 @@ defmodule NineMensMorris.Game do
     try do
       state = State.new(game_id)
 
-      timeout_ref = Process.send_after(self(), :timeout, @game_timout_ms)
+      timeout_ref = Process.send_after(self(), :timeout, Config.game_timeout_ms())
       state = %{state | timeout_ref: timeout_ref}
 
       {:ok, state}
@@ -320,7 +319,8 @@ defmodule NineMensMorris.Game do
           broadcast(state.game_id, {:game_ended, :victory, player, win_reason})
         end
 
-        {:reply, {:ok, updated_state.board}, updated_state}
+        final_state = schedule_cleanup_if_game_ended(updated_state)
+        {:reply, {:ok, final_state.board}, final_state}
 
       {:error, reason, _} ->
         {:reply, {:error, reason}, new_state}
@@ -339,7 +339,8 @@ defmodule NineMensMorris.Game do
           broadcast(state.game_id, {:game_ended, :victory, player, win_reason})
         end
 
-        {:reply, {:ok, updated_state.board}, updated_state}
+        final_state = schedule_cleanup_if_game_ended(updated_state)
+        {:reply, {:ok, final_state.board}, final_state}
 
       {:error, reason, _} ->
         {:reply, {:error, reason}, new_state}
@@ -353,12 +354,18 @@ defmodule NineMensMorris.Game do
   end
 
   @impl true
+  def handle_info(:cleanup_completed_game, state) do
+    {:stop, :normal, state}
+  end
+
+  @impl true
   def handle_info({:player_timeout, session_id}, state) do
     new_state = State.handle_player_timeout(state, session_id)
 
     if new_state.winner do
       broadcast(state.game_id, {:game_ended, :victory, new_state.winner, :opponent_disconnected})
-      {:noreply, new_state}
+      final_state = schedule_cleanup_if_game_ended(new_state)
+      {:noreply, final_state}
     else
       {:noreply, new_state}
     end
@@ -412,5 +419,13 @@ defmodule NineMensMorris.Game do
     after
       0 -> state
     end
+  end
+
+  defp schedule_cleanup_if_game_ended(state) do
+    if state.winner && state.winner != :game_abandoned do
+      Process.send_after(self(), :cleanup_completed_game, Config.game_cleanup_delay_ms())
+    end
+
+    state
   end
 end

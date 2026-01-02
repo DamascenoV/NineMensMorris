@@ -41,6 +41,8 @@ defmodule NineMensMorris.BoardCoordinates do
 
   @reverse_coordinates Map.new(@board_coordinates, fn {coord, pos} -> {pos, coord} end)
 
+  @all_positions Map.values(@board_coordinates)
+
   @adjacent_positions %{
     a1: [:a4, :d1],
     a4: [:a1, :a7, :b4],
@@ -113,5 +115,13 @@ defmodule NineMensMorris.BoardCoordinates do
   @spec valid_position?(atom()) :: boolean()
   def valid_position?(position) do
     Map.has_key?(@reverse_coordinates, position)
+  end
+
+  @doc """
+  Returns all valid board positions.
+  """
+  @spec all_positions() :: [atom()]
+  def all_positions do
+    @all_positions
   end
 end

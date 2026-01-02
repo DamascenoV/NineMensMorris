@@ -16,9 +16,7 @@ defmodule NineMensMorris.Game.State do
   """
 
   alias NineMensMorris.Board
-
-  @game_timout_ms 30 * 60 * 1000
-  @player_timeout_ms 30 * 1000
+  alias NineMensMorris.Game.Config
 
   @type t :: %__MODULE__{
           game_id: term(),
@@ -211,7 +209,8 @@ defmodule NineMensMorris.Game.State do
     new_state = %{state | players: new_players}
 
     if session_id do
-      timeout_ref = Process.send_after(self(), {:player_timeout, session_id}, @player_timeout_ms)
+      timeout_ref =
+        Process.send_after(self(), {:player_timeout, session_id}, Config.player_timeout_ms())
 
       disconnected_player = %{
         color: player_color,
@@ -335,7 +334,7 @@ defmodule NineMensMorris.Game.State do
   @spec reset_timeout(t()) :: t()
   def reset_timeout(state) do
     if state.timeout_ref, do: Process.cancel_timer(state.timeout_ref)
-    timeout_ref = Process.send_after(self(), :timeout, @game_timout_ms)
+    timeout_ref = Process.send_after(self(), :timeout, Config.game_timeout_ms())
     %{state | timeout_ref: timeout_ref}
   end
 

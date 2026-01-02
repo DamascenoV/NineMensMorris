@@ -27,7 +27,7 @@ defmodule NineMensMorris.BoardTest do
     board = %{Board.new() | pieces: %{white: 0, black: 0}}
 
     result = Board.place_piece(board, :a1, :white)
-    assert result == {:error, "No more pieces available"}
+    assert result == {:error, :no_pieces_available}
   end
 
   test "mill?/3 correctly identifies mills" do
@@ -56,7 +56,7 @@ defmodule NineMensMorris.BoardTest do
     {:ok, board} = Board.place_piece(board, :b2, :white)
 
     result = Board.remove_piece(board, :a1, :black)
-    assert result == {:error, "Cannot remove piece in a mill"}
+    assert result == {:error, :piece_in_mill}
 
     {:ok, _board} = Board.remove_piece(board, :b2, :black)
   end
